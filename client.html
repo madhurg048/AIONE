@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayG — Accept Payments Online</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  .fade-up{animation:fu .3s ease}
+  @keyframes fu{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .pulse{animation:pl 2s infinite}
+  @keyframes pl{0%{box-shadow:0 0 0 0 rgba(99,102,241,.5)}70%{box-shadow:0 0 0 14px rgba(99,102,241,0)}100%{box-shadow:0 0 0 0 rgba(99,102,241,0)}}
+</style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 via-white to-teal-50 min-h-screen">
+
+  <!-- ===== sample client marketing site ===== -->
+  <header class="max-w-5xl mx-auto px-6 py-5 flex items-center justify-between">
+    <div class="flex items-center gap-2 font-bold text-indigo-700 text-xl"><i class="fa-solid fa-indian-rupee-sign"></i> PayG</div>
+    <nav class="hidden sm:flex gap-6 text-sm text-gray-600">
+      <a href="#" class="hover:text-indigo-600">Products</a><a href="#" class="hover:text-indigo-600">Pricing</a>
+      <a href="#" class="hover:text-indigo-600">Developers</a><a href="#" class="hover:text-indigo-600">Support</a>
+    </nav>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-6 pt-10 pb-24">
+    <div class="text-center max-w-2xl mx-auto">
+      <span class="inline-block bg-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1 rounded-full mb-4">Payments · Payouts · Settlements</span>
+      <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-tight">Accept payments online in minutes</h1>
+      <p class="text-gray-600 mt-4 text-lg">UPI, cards, netbanking & wallets with the best success rates. Go live fast with a simple integration and transparent MDR.</p>
+      <div class="flex gap-3 justify-center mt-7">
+        <button onclick="openChat()" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 shadow-lg">Talk to sales</button>
+        <a href="#" class="border border-gray-300 px-6 py-3 rounded-lg font-semibold text-gray-700 hover:bg-gray-50">View pricing</a>
+      </div>
+      <p class="text-xs text-gray-400 mt-4">Trusted by 50,000+ businesses · PCI-DSS certified</p>
+    </div>
+    <div class="grid sm:grid-cols-3 gap-4 mt-16">
+      <div class="bg-white rounded-xl shadow p-5"><i class="fa-solid fa-bolt text-indigo-500 text-2xl"></i><h3 class="font-semibold mt-2">Instant onboarding</h3><p class="text-sm text-gray-500 mt-1">Activate with quick KYC and start collecting today.</p></div>
+      <div class="bg-white rounded-xl shadow p-5"><i class="fa-solid fa-shield-halved text-teal-500 text-2xl"></i><h3 class="font-semibold mt-2">Bank-grade security</h3><p class="text-sm text-gray-500 mt-1">Tokenization, 3-D Secure and fraud checks built in.</p></div>
+      <div class="bg-white rounded-xl shadow p-5"><i class="fa-solid fa-code text-amber-500 text-2xl"></i><h3 class="font-semibold mt-2">Developer-first APIs</h3><p class="text-sm text-gray-500 mt-1">Clean REST APIs, SDKs and webhooks.</p></div>
+    </div>
+  </main>
+
+  <!-- ===== live chat widget ===== -->
+  <button id="chatBubble" onclick="openChat()" class="fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full bg-indigo-600 text-white text-xl shadow-lg pulse hover:bg-indigo-700">
+    <i class="fa-solid fa-comment-dots"></i></button>
+
+  <div id="chatPanel" class="hidden fixed bottom-5 right-5 z-50 w-[350px] max-w-[92vw] bg-white rounded-2xl shadow-2xl border flex flex-col overflow-hidden" style="height:520px">
+    <div class="bg-indigo-600 text-white px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-white/20 grid place-items-center"><i class="fa-solid fa-headset"></i></div>
+        <div><div class="font-semibold text-sm leading-4">PayG Sales</div><div class="text-[11px] text-indigo-100">Typically replies in a minute</div></div>
+      </div>
+      <button onclick="closeChat()" class="text-indigo-100 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <div id="msgs" class="flex-1 overflow-y-auto p-3 space-y-2 bg-gray-50 text-sm"></div>
+
+    <!-- lead capture form (shown once) -->
+    <div id="leadForm" class="hidden border-t p-3 space-y-2 bg-white">
+      <div class="text-[11px] text-gray-500">Share your details and our team will reach out:</div>
+      <input id="cName" placeholder="Full name *" class="w-full border rounded px-2 py-1.5 text-sm">
+      <input id="cEmail" type="email" placeholder="Work email *" class="w-full border rounded px-2 py-1.5 text-sm">
+      <input id="cPhone" placeholder="Mobile *" class="w-full border rounded px-2 py-1.5 text-sm">
+      <input id="cCompany" placeholder="Business name" class="w-full border rounded px-2 py-1.5 text-sm">
+      <input id="website" class="hidden"><!-- honeypot -->
+      <button onclick="submitLead()" class="w-full bg-indigo-600 text-white rounded py-2 text-sm font-semibold hover:bg-indigo-700">Start chat</button>
+    </div>
+
+    <!-- call-me bar (only when telephony is live) -->
+    <button id="callMe" onclick="requestCall()" class="hidden border-t p-2 bg-green-50 text-green-700 text-xs font-semibold hover:bg-green-100 flex items-center justify-center gap-1.5">
+      <i class="fa-solid fa-phone-volume"></i> Call me now — talk to sales directly</button>
+
+    <!-- message composer (shown after capture) -->
+    <div id="composer" class="hidden border-t p-2 flex gap-2 bg-white">
+      <input type="file" id="fileInput" class="hidden" onchange="uploadFile()">
+      <button onclick="document.getElementById('fileInput').click()" class="w-9 h-9 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200"><i class="fa-solid fa-paperclip text-xs"></i></button>
+      <input id="msgInput" placeholder="Type your message…" class="flex-1 border rounded-full px-3 py-1.5 text-sm" onkeydown="if(event.key==='Enter')sendMsg()">
+      <button onclick="sendMsg()" class="w-9 h-9 rounded-full bg-indigo-600 text-white"><i class="fa-solid fa-paper-plane text-xs"></i></button>
+    </div>
+  </div>
+
+<script>
+// point at the CRM's public capture endpoint (same origin in this demo; CORS-enabled for cross-site)
+const CRM = (location.origin) + '/api/sales/chat-lead.php';
+const transcript = [];
+let captured = false, interest = '';
+
+function openChat(){
+  document.getElementById('chatBubble').classList.add('hidden');
+  document.getElementById('chatPanel').classList.remove('hidden');
+  if (transcript.length === 0) {
+    bot("Hi there! 👋 I'm PayGenie. What can we help you with today?");
+    quickReplies(['💰 Pricing & MDR', '🔌 Integration help', '🏪 Become a merchant', '📞 Request a callback']);
+  }
+}
+function closeChat(){ document.getElementById('chatPanel').classList.add('hidden'); document.getElementById('chatBubble').classList.remove('hidden'); }
+
+function bubble(html, who){
+  const m = document.getElementById('msgs');
+  const mine = who === 'me';
+  m.insertAdjacentHTML('beforeend',
+    `<div class="flex ${mine?'justify-end':'justify-start'} fade-up"><div class="${mine?'bg-indigo-600 text-white':'bg-white border text-gray-700'} rounded-2xl px-3 py-2 max-w-[80%] shadow-sm">${html}</div></div>`);
+  m.scrollTop = m.scrollHeight;
+}
+function bot(text){ bubble(text.replace(/\n/g,'<br>'),'bot'); transcript.push({from:'bot',text}); }
+function me(text){ bubble(text,'me'); transcript.push({from:'visitor',text}); }
+
+function quickReplies(list){
+  const m = document.getElementById('msgs');
+  const id = 'qr'+Date.now();
+  m.insertAdjacentHTML('beforeend', `<div id="${id}" class="flex flex-wrap gap-1.5 justify-start">`+
+    list.map(l=>`<button onclick="pickIntent('${l.replace(/'/g,"")}','${id}')" class="text-[11px] border border-indigo-200 text-indigo-700 bg-indigo-50 rounded-full px-2.5 py-1 hover:bg-indigo-100">${l}</button>`).join('')+`</div>`);
+  m.scrollTop = m.scrollHeight;
+}
+function pickIntent(label, qid){
+  document.getElementById(qid)?.remove();
+  interest = label; me(label);
+  const replies = {
+    'Pricing': "Our pricing is transparent — competitive MDR on UPI/cards with no setup fee. I'll have a specialist share a custom quote.",
+    'Integration': "We have clean REST APIs, SDKs and webhooks. Our solutions team can guide your integration end-to-end.",
+    'merchant': "Awesome — onboarding takes minutes with quick KYC. Let's get you started!",
+    'callback': "Sure! Leave your number and the best time — our team will call you back.",
+  };
+  const key = Object.keys(replies).find(k => label.toLowerCase().includes(k.toLowerCase())) || 'merchant';
+  setTimeout(()=>{ bot(replies[key]); askDetails(); }, 400);
+}
+function askDetails(){
+  if (captured) { return; }
+  bot("Could you share a few details so the right person can reach you?");
+  document.getElementById('leadForm').classList.remove('hidden');
+}
+
+const CHAT = (location.origin) + '/api/sales/chat.php';
+let chatToken = null, sessionId = null, lastId = 0, pollTimer = null;
+
+async function submitLead(){
+  const name=v('cName'), email=v('cEmail'), phone=v('cPhone'), company=v('cCompany');
+  if(!name || (!email && !phone)){ alert('Please enter your name and email or phone'); return; }
+  if(document.getElementById('website').value){ return; } // honeypot
+  try{
+    const r = await fetch(CHAT+'?action=start', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name, email, phone, company, message: interest }) });
+    const j = await r.json();
+    if(j.success){
+      captured = true; chatToken = j.data.token; sessionId = j.data.session_id;
+      document.getElementById('leadForm').classList.add('hidden');
+      document.getElementById('composer').classList.remove('hidden');
+      document.getElementById('msgInput').focus();
+      pollTimer = setInterval(pollVisitor, 2500);   // live: pull agent/bot messages
+      pollVisitor();
+    } else { bot("Hmm, couldn't start the chat ("+(j.error||'error')+"). Please try again."); }
+  }catch(e){ bot("Network hiccup — please try again in a moment."); }
+}
+
+async function sendMsg(){
+  const t = v('msgInput'); if(!t) return;
+  document.getElementById('msgInput').value='';
+  bubble(esc(t), 'me');                       // echo locally (poll skips our own)
+  if(!captured){ askDetails(); return; }
+  try{ await fetch(CHAT+'?action=v_post', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ token: chatToken, body: t }) }); }catch(e){}
+  pollVisitor();
+}
+
+const CHAT_UPLOAD = (location.origin) + '/api/sales/chat-upload.php';
+function attachmentHtml(name, url, mime){
+  const isImg = (mime||'').startsWith('image/');
+  const href = (location.origin) + '/' + url;
+  if (isImg) return `<a href="${href}" target="_blank"><img src="${href}" class="rounded max-w-[180px] max-h-[180px]"></a>`;
+  return `<a href="${href}" target="_blank" class="underline"><i class="fa-solid fa-paperclip mr-1"></i>${esc(name)}</a>`;
+}
+async function uploadFile(){
+  const input = document.getElementById('fileInput');
+  const file = input.files[0]; if(!file || !captured) { input.value=''; return; }
+  const fd = new FormData();
+  fd.append('token', chatToken);
+  fd.append('file', file);
+  bubble('<span class="text-[11px] text-gray-400">Uploading…</span>', 'me');
+  try{
+    const r = await fetch(CHAT_UPLOAD+'?action=v_upload', { method:'POST', body: fd });
+    const j = await r.json();
+    if(j.success){ bubble(attachmentHtml(j.data.name, j.data.url, j.data.type), 'me'); }
+    else { bubble(`<span class="text-[11px] text-red-500">${esc(j.error||'Upload failed')}</span>`, 'me'); }
+  }catch(e){ bubble('<span class="text-[11px] text-red-500">Upload failed — please try again.</span>', 'me'); }
+  input.value = '';
+}
+
+async function pollVisitor(){
+  if(!chatToken) return;
+  try{
+    const r = await fetch(`${CHAT}?action=v_poll&token=${chatToken}&since=${lastId}`);
+    const j = await r.json(); if(!j.success) return;
+    j.data.messages.forEach(m=>{
+      lastId = m.id;
+      if(m.sender==='visitor') return;         // already shown locally
+      if(m.sender==='system'){ bubble(`<span class="text-[11px] text-gray-400 italic">${esc(m.body)}</span>`,'bot'); }
+      else if(m.attachment_url){ bubble(attachmentHtml(m.body, m.attachment_url, m.attachment_type), 'bot'); }
+      else bubble(esc(m.body), 'bot');
+    });
+    // show the "call me" button only when telephony is live + working
+    document.getElementById('callMe').classList.toggle('hidden', !j.data.call_enabled);
+    if(j.data.status==='closed' && pollTimer){ clearInterval(pollTimer); bubble('<span class="text-[11px] text-gray-400">Chat ended. Thanks for reaching out!</span>','bot'); document.getElementById('callMe').classList.add('hidden'); }
+  }catch(e){}
+}
+
+async function requestCall(){
+  const btn = document.getElementById('callMe');
+  btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting…';
+  try{
+    const r = await fetch(CHAT+'?action=v_call', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token: chatToken }) });
+    const j = await r.json();
+    if(j.success){ btn.classList.add('hidden'); }
+    else { bubble('<span class="text-[11px] text-red-500">'+esc(j.error||'Could not place the call')+'</span>','bot'); btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-phone-volume"></i> Call me now — talk to sales directly'; }
+  }catch(e){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-phone-volume"></i> Call me now'; }
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function v(id){ return (document.getElementById(id).value||'').trim(); }
+</script>
+</body>
+</html>

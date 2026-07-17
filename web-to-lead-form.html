@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PayG — Get Started</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+  <!--
+    Sample Web-to-Lead form. Host anywhere; it POSTs to the CRM's public endpoint.
+    Change ENDPOINT to your deployed URL, e.g. https://crm.payg-india.com/payg/api/sales/web-to-lead.php
+  -->
+  <form id="f" class="bg-white rounded-xl shadow-md p-6 w-full max-w-md space-y-3">
+    <h1 class="text-xl font-semibold text-indigo-600">Start accepting payments with PayG</h1>
+    <p class="text-sm text-gray-500">Leave your details — a specialist will call you back.</p>
+    <input name="first_name" placeholder="Your name" class="border rounded px-3 py-2 w-full text-sm">
+    <input name="email" type="email" placeholder="Email" required class="border rounded px-3 py-2 w-full text-sm">
+    <input name="phone" placeholder="Phone" class="border rounded px-3 py-2 w-full text-sm">
+    <input name="company" placeholder="Business name" class="border rounded px-3 py-2 w-full text-sm">
+    <textarea name="message" placeholder="What do you need?" class="border rounded px-3 py-2 w-full text-sm" rows="2"></textarea>
+    <!-- honeypot: hidden from humans, bots fill it -> silently dropped -->
+    <input type="text" name="website" tabindex="-1" autocomplete="off" class="hidden">
+    <button class="bg-indigo-600 text-white rounded px-4 py-2 w-full text-sm hover:bg-indigo-700">Request a callback</button>
+    <div id="msg" class="text-sm text-center hidden"></div>
+  </form>
+
+  <script>
+    // Endpoint resolves relative to wherever this page is hosted (portable).
+    const ENDPOINT = new URL('api/sales/web-to-lead.php', location.href).href;
+    // Source comes from the URL (?src=qr, ?src=qr_event, …) so each QR/link is tracked distinctly.
+    const SRC = new URLSearchParams(location.search).get('src') || 'web';
+    document.getElementById('f').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target).entries());
+      data.src = SRC;
+      const msg = document.getElementById('msg');
+      try {
+        const r = await fetch(ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        const j = await r.json();
+        msg.textContent = j.success ? '✅ Thanks! We\'ll be in touch shortly.' : ('⚠️ ' + (j.error || 'Try again'));
+        msg.className = 'text-sm text-center ' + (j.success ? 'text-green-600' : 'text-red-500');
+        msg.classList.remove('hidden');
+        if (j.success) e.target.reset();
+      } catch (err) {
+        msg.textContent = '⚠️ Network error'; msg.className = 'text-sm text-center text-red-500'; msg.classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>

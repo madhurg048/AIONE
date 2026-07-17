@@ -1,0 +1,47 @@
+PayG Sales CRM — KPA / KRA patch (changed files only)
+=====================================================
+
+This archive mirrors the app's folder structure and contains ONLY the files that were
+added or changed for the KPA/KRA feature (goal definitions with manager→team inheritance,
+plus task→KPA effort roll-up so you can see hours consumed per KPA / who spent how much).
+
+HOW TO APPLY
+------------
+1. Database — run the table SQL once (creates the new table, alters `tasks`, grants the
+   'kpa' module to managers+). Idempotent, safe to re-run:
+
+       mysql -u root super_payg_crm < KPA_KRA_SCHEMA.sql
+
+   (Equivalent to migrations phase37 + phase38, included under database/migrations/.)
+
+2. Files — copy these over your existing app root, preserving paths (overwrite):
+
+FILES IN THIS PATCH
+-------------------
+NEW (feature):
+   sales-kpa.php                                  KPA/KRA screen (admin + manager views)
+   api/sales/kpa.php                              KPA API: definitions, inheritance, hours roll-up
+   database/migrations/phase37_kpa_kra.sql        creates kpa_goals + grants 'kpa' module
+   database/migrations/phase38_task_kpa_hours.sql adds tasks.kpa_goal_id + tasks.hours_spent
+   KPA_KRA_SCHEMA.sql                             consolidated SQL for the new/modified tables
+
+MODIFIED (feature):
+   api/sales/tasks.php        accept/store kpa_goal_id + hours_spent on create/update
+   includes/sales-layout.php  nav catalog + 'kpa' in the Admin menu + task modal KPA/hours fields
+   js/sales.js                goal picker, task hours logging, assign-modal KPA dropdown
+   sales-settings.php         "KPA / KRA Goals" tile (managers & above only)
+
+MODIFIED (housekeeping — third-party assistant references removed):
+   chat.php                                          comment text only
+   database/migrations/phase28_drop_employees_dead_column.sql   comment text only
+
+WHO SEES WHAT
+-------------
+   • Managers and above only can open the KPA page (team members are redirected; the
+     nav item + Settings tile are hidden from them via role_access).
+   • Admin defines KPA/KRA per org group (Sales/Service/HR/IT/Support) and sees the whole
+     organisation. A manager inherits org + supervisor goals (read-only) and can add KPAs
+     for their own team (line of control) only.
+   • Team members tag the tasks they submit with a KPA/KRA + hours (My Tasks panel). Those
+     hours roll up: admin sees the whole org; each manager sees only their team.
+   • Expand any KPA/KRA row to see total hours + who spent how much + the contributing tasks.

@@ -1,0 +1,29 @@
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# One-shot scripts (should not be deployed)
+create-users.php
+create-dept-managers.php
+create-service-sample-data.php
+create-service-users.php
+sales-setup.php
+setup.php
+reset-dev-passwords.php
+production-wipe-keep-admin.php
+production-cutover.php
+
+# Debug / build artifacts
+*.zip
+big_body.json
+resp_long.json
+resp_retest.json
+
+# Claude Code local state
+.claude/
