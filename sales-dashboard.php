@@ -12,8 +12,10 @@ sales_nav('dashboard');
 ?>
 <main class="p-2 space-y-2">
 
-  <!-- my role-level sales goal -->
+  <!-- my role-level sales goal (scorecard — management view; self-hides for reps) -->
   <?php sales_goal_widget(); ?>
+  <!-- my KPA/KRA goals (what HR / my manager set — this is what a rep sees) -->
+  <?php sales_my_goals_widget(); ?>
 
   <!-- system-wide KPI strip -->
   <div id="kpis" class="kstrip"></div>

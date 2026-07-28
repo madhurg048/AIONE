@@ -175,7 +175,9 @@ sales_nav('chat');
       <div class="flex items-center justify-between">
         <span class="text-xs font-semibold">${esc(s.visitor_name || 'Visitor')}</span>
         ${kind === 'waiting' ? '<span class="text-[9px] font-semibold bg-red-100 text-red-600 rounded px-1.5 py-0.5 animate-pulse">Currently free</span>'
-        : kind === 'missed' ? '<span class="text-[9px] font-semibold bg-amber-100 text-amber-700 rounded px-1.5 py-0.5">Missed</span>'
+        : kind === 'missed' ? (s.missed_reason === 'no_agent_online'
+            ? '<span class="text-[9px] font-semibold bg-red-100 text-red-700 rounded px-1.5 py-0.5" title="No agent was online when the customer reached out">Missed · offline</span>'
+            : '<span class="text-[9px] font-semibold bg-amber-100 text-amber-700 rounded px-1.5 py-0.5" title="Customer left after waiting — no agent accepted in time">Missed · left</span>')
           : kind === 'closed' ? '<span class="text-[9px] font-semibold bg-gray-100 text-gray-500 rounded px-1.5 py-0.5">Closed</span>'
             : '<span class="text-[9px] font-semibold bg-green-100 text-green-700 rounded px-1.5 py-0.5"><i class="fa-solid fa-headset text-[8px]"></i> You</span>'}
       </div>
@@ -240,7 +242,13 @@ sales_nav('chat');
   }
   let _lastMsgDateKey = null;
   function bubble(m) {
-    if (m.sender === 'system') return `<div class="text-center text-[11px] text-amber-600 italic">${esc(m.body)}</div>`;
+    if (m.sender === 'system') {
+      // Agent-side wording only: the visitor widget still reads "… joined the chat" (friendly to a
+      // customer), but on the agent console "accepted the chat" reflects what the agent actually did
+      // (clicked Accept/Pick up). Pure display rewrite — the stored message is unchanged.
+      const body = String(m.body || '').replace(/\bjoined the chat\b/i, 'accepted the chat');
+      return `<div class="text-center text-[11px] text-amber-600 italic">${esc(body)}</div>`;
+    }
     if (m.sender === 'note') {
       const mineNote = +m.created_by === +CURRENT_EMP_ID;
       const meta = [m.created_by_name, fmtTime(m.created_at)].filter(Boolean).join(' · ') + (m.edited_at ? ' (edited)' : '');
@@ -326,8 +334,21 @@ sales_nav('chat');
     try {
       const { data } = await apiGet('chat.php', { action: 'session_info', session_id: id });
       if (cur !== id) return;
+      // Subject badge — what the customer picked in the chatbot (assist_type). Colour-coded so the
+      // agent can tell a Transaction issue from a Service request or Callback at a glance.
+      const SUBJ = {
+        service:     ['Service Request',     'bg-indigo-100 text-indigo-700'],
+        transaction: ['Transaction Related', 'bg-amber-100 text-amber-700'],
+        callback:    ['Callback Request',    'bg-rose-100 text-rose-700'],
+        sales:       ['Sales Enquiry',       'bg-emerald-100 text-emerald-700'],
+      };
+      const subj = SUBJ[(data.assist_type || '').toLowerCase()];
+      const subjBadge = subj
+        ? `<span class="text-[10px] font-semibold rounded px-1.5 py-0.5 ${subj[1]}">${esc(subj[0])}</span>`
+        : (data.subject ? `<span class="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-gray-100 text-gray-600">${esc(data.subject)}</span>` : '');
       document.getElementById('chatHeadLabel').innerHTML =
         `<span class="font-semibold text-gray-700">${esc(data.visitor_name || 'Visitor')}</span>
+         ${subjBadge}
          <span class="text-[11px] text-gray-400">· live</span>`;
       const field = (icon, val) => `<span><i class="fa-solid ${icon} text-gray-400"></i> ${val ? esc(val) : '<span class="text-gray-300">—</span>'}</span>`;
       document.getElementById('chatHeadDetails').innerHTML =
@@ -448,6 +469,15 @@ sales_nav('chat');
       document.getElementById('composer').classList.add('hidden');
       banner.classList.add('hidden');
       missedToolbar.classList.remove('hidden');
+      // Reason-aware note: distinguish "nobody was online" from "we were online but let the
+      // pickup window lapse" so the agent knows whether this was a staffing gap or a miss.
+      const note = document.getElementById('missedReasonNote');
+      if (note) {
+        note.classList.remove('hidden');
+        note.innerHTML = data.missed_reason === 'no_agent_online'
+          ? '<i class="fa-solid fa-user-slash mr-1"></i>No agent was online when the customer reached out — they were given a ticket reference to follow up.'
+          : '<i class="fa-solid fa-clock mr-1"></i>Customer left after waiting — no agent accepted the chat in time.';
+      }
     } else if (!data.can_write) {
       // Team-wide read, owner-only write: anyone in the department can watch this chat, but
       // only its current owner (shown here) may actually type into it.
@@ -593,6 +623,9 @@ sales_nav('chat');
     } catch (e) { }
   }
   function notifyWaiting(waiting) {
+    // Service execs get waiting-chat alerts (with sound + Accept) from the global notifier on every
+    // page, so don't also fire the page-local desktop popup for them — it would double up.
+    if (CURRENT_ROLE === 'service_exec') return;
     const ids = new Set((waiting || []).map(w => w.id));
     if (_seenWait === null) { _seenWait = ids; return; }
     const fresh = (waiting || []).filter(w => !_seenWait.has(w.id));
@@ -603,16 +636,11 @@ sales_nav('chat');
         notif.onclick = () => { window.focus(); setFilter('active'); pickup(w.id); notif.close(); };
       });
   }
-  /* Service-only, mandatory, repeats until the waiting queue is empty (see comment above). */
-  function updateAlarm(waitingCount) {
-    if (CURRENT_ROLE !== 'service_exec') return;
-    if (waitingCount > 0 && !alarmT) {
-      chime();
-      alarmT = setInterval(chime, 4000);
-    } else if (waitingCount === 0 && alarmT) {
-      clearInterval(alarmT); alarmT = null;
-    }
-  }
+  /* The audible waiting-chat alarm now lives in the GLOBAL service notifier (includes/sales-layout.php),
+     which rings on every page — including this one — and adds an Accept button + cross-agent
+     dismissal. Ringing here too would double up the sound on the Live Chat page, so this page-local
+     alarm is intentionally a no-op now. (Kept as a stub so the loadInbox() call site is unchanged.) */
+  function updateAlarm(waitingCount) { /* handled globally — see sales-layout.php notifier */ }
   /* deep link from a Leads row's Live Chat icon: sales-chat.php?open=<session_id>&tab=<status> —
      lands on whichever tab the chat actually lives in (active/missed/closed) instead of always
      assuming Active, so a closed or missed chat opens read-only in its own tab. */

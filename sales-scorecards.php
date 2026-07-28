@@ -1,7 +1,10 @@
 <?php
 require_once __DIR__ . '/includes/sales-layout.php';
 $me = sales_guard();
-$canManage = in_array(sales_role(), ['admin','manager'], true);
+// Same authority as the scorecards API: Sales Manager + anyone who governs KPIs (Admin, HR,
+// Sales Head). Keeps the page and api/sales/scorecards.php answering access the same way.
+$canManage    = sales_role() === 'manager' || payg_role_can(sales_role(), 'kpi_govern');
+$canIncentive = payg_role_can(sales_role(), 'incentive_manage');   // edit structure + book payouts
 sales_head('Scorecards');
 sales_header($me, $canManage ? 'Sales · Team Scorecards' : 'Sales · My Scorecard');
 sales_nav('scorecards');
@@ -16,6 +19,7 @@ sales_nav('scorecards');
       <select id="period" class="ctl ml-1" onchange="load()"></select></label>
     <div class="flex-1"></div>
     <?php if ($canManage): ?>
+    <button onclick="openStructure()" class="ctl hover:bg-gray-50" title="Edit the incentive payout rates (memo §7/§8)"><i class="fa-solid fa-sliders text-indigo-500"></i> Incentive structure</button>
     <button onclick="openBuilder()" class="btn-p"><i class="fa-solid fa-plus"></i> New Scorecard</button>
     <?php endif; ?>
   </div>
@@ -24,6 +28,27 @@ sales_nav('scorecards');
   <div id="kpis" class="kstrip"></div>
 
   <?php if ($canManage): ?>
+  <!-- MANAGER: live performance dashboard (leaderboard + business mix) -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-2">
+    <div class="card">
+      <div class="p-2 border-b text-[11px] font-semibold text-gray-600 uppercase tracking-wide flex items-center justify-between">
+        <span><i class="fa-solid fa-ranking-star text-amber-500"></i> Leaderboard</span>
+        <span class="normal-case font-normal text-[10px] text-gray-400">Ranked by weighted attainment · live from synced actuals</span>
+      </div>
+      <div id="leaderboard" class="p-2 space-y-1.5"></div>
+    </div>
+    <div class="card">
+      <div class="p-2 border-b text-[11px] font-semibold text-gray-600 uppercase tracking-wide flex items-center justify-between">
+        <span><i class="fa-solid fa-chart-pie text-indigo-500"></i> Business mix</span>
+        <span class="normal-case font-normal text-[10px] text-gray-400">GMV by category this quarter · high-yield highlighted</span>
+      </div>
+      <div class="p-2 flex items-center gap-3">
+        <div class="relative" style="width:150px;height:150px;flex:none"><canvas id="mixPie"></canvas></div>
+        <div id="mixLegend" class="flex-1 text-[11px] space-y-1 min-w-0"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- MANAGER: team scorecards table -->
   <div class="card">
     <div class="p-2 border-b text-[11px] font-semibold text-gray-600 uppercase tracking-wide flex items-center justify-between">
@@ -55,8 +80,10 @@ sales_nav('scorecards');
 </div>
 
 <?php sales_scripts(); ?>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
-const CAN_MANAGE = <?= $canManage ? 'true' : 'false' ?>;
+const CAN_MANAGE    = <?= $canManage ? 'true' : 'false' ?>;
+const CAN_INCENTIVE = <?= $canIncentive ? 'true' : 'false' ?>;   // may edit structure + book payouts
 let CATALOG = null;
 
 /* ---- ₹ Cr/L aware formatting ---- */
@@ -95,8 +122,64 @@ async function load(){
     ['Payout ready', ready+' / '+n, ready<n],
   ].map(([l,v,warn])=>`<div><div class="kv ${warn?'text-red-600':''}">${v}</div><div class="kl">${l}</div></div>`).join('');
 
-  if (CAN_MANAGE) renderRows(cards, period);
+  if (CAN_MANAGE) { renderRows(cards, period); renderLeaderboard(cards); loadMix(period); }
   else renderMine(cards, period);
+}
+
+/* ================= MANAGER: leaderboard (live from synced actuals) ================= */
+function renderLeaderboard(cards){
+  const el = document.getElementById('leaderboard'); if(!el) return;
+  const ranked = [...cards].sort((a,b)=> (+b.score.weighted_pct) - (+a.score.weighted_pct));
+  if(!ranked.length){ el.innerHTML = `<div class="text-center text-gray-400 py-3 text-xs">No scorecards yet.</div>`; return; }
+  const medal = ['🥇','🥈','🥉'];
+  el.innerHTML = ranked.map((c,i)=>{
+    const s=c.score, pct=+s.weighted_pct;
+    const col = pct>=90?'bg-teal-500':pct>=75?'bg-green-500':pct>=60?'bg-blue-500':pct>=40?'bg-yellow-500':'bg-red-500';
+    const payout = c.payout ? fmtBig(c.payout.total) : '—';
+    return `<div class="flex items-center gap-2">
+      <div class="w-6 text-center text-xs font-semibold text-gray-500">${medal[i]||('#'+(i+1))}</div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-xs font-medium truncate">${esc(c.employee_name)}</span>
+          <span class="text-[11px] text-gray-500 whitespace-nowrap">${s.rating} · ${payout}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="flex-1 h-2 bg-gray-100 rounded"><div class="${col} h-2 rounded" style="width:${Math.min(100,Math.max(3,pct))}%"></div></div>
+          <span class="text-[11px] font-semibold w-10 text-right">${pct}%</span>
+        </div>
+      </div></div>`;
+  }).join('');
+}
+
+/* ================= MANAGER: business-mix pie (live GMV by category) ================= */
+let MIX_CHART = null;
+const MIX_COLORS = ['#6366f1','#14b8a6','#f59e0b','#ef4444','#8b5cf6','#0ea5e9','#84cc16','#ec4899','#64748b'];
+async function loadMix(period){
+  const legend = document.getElementById('mixLegend'); const cv = document.getElementById('mixPie');
+  if(!legend || !cv) return;
+  const r = await apiGet('scorecards.php',{mix:1,period});
+  const slices = (r.data && r.data.slices) || [];
+  if(!slices.length){
+    legend.innerHTML = `<div class="text-gray-400">No transacting GMV this quarter yet.</div>`;
+    if(MIX_CHART){ MIX_CHART.destroy(); MIX_CHART=null; }
+    return;
+  }
+  const total = slices.reduce((a,s)=>a+ +s.gmv, 0) || 1;
+  const labels = slices.map(s=>s.category), data = slices.map(s=>+s.gmv);
+  const colors = slices.map((s,i)=>MIX_COLORS[i%MIX_COLORS.length]);
+  if(MIX_CHART) MIX_CHART.destroy();
+  MIX_CHART = new Chart(cv, {
+    type:'doughnut',
+    data:{ labels, datasets:[{ data, backgroundColor:colors, borderWidth:1, borderColor:'#fff' }] },
+    options:{ plugins:{ legend:{display:false},
+      tooltip:{ callbacks:{ label:(x)=>`${x.label}: ${fmtBig(x.raw)} (${(x.raw/total*100).toFixed(1)}%)` } } },
+      cutout:'58%', responsive:true, maintainAspectRatio:false }
+  });
+  legend.innerHTML = slices.map((s,i)=>`<div class="flex items-center justify-between gap-2">
+      <span class="flex items-center gap-1.5 min-w-0"><span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:${colors[i]}"></span>
+        <span class="truncate">${esc(s.category)}${s.high_yield?' <span title="high-yield segment" class="text-[9px] text-teal-600">★</span>':''}</span></span>
+      <span class="text-gray-500 whitespace-nowrap">${(s.gmv/total*100).toFixed(1)}% · ${fmtBig(s.gmv)}</span>
+    </div>`).join('');
 }
 
 /* ================= MANAGER: rows ================= */
@@ -208,6 +291,7 @@ function cardHtml(c,s){
       ${badge('Fee incentive: '+(s.fee_incentive_eligible?('eligible '+s.fee_slab):'below ₹1L'), s.fee_incentive_eligible?'green':'gray')}
       ${badge('GMV incentive: '+(s.gmv_incentive_eligible?'eligible':'not payable'), s.gmv_incentive_eligible?'green':'red')}
     </div>
+    ${payoutBlock(c)}
     <table class="dense"><thead><tr><th>KPI</th><th>Weight</th><th class="text-right">Target</th><th class="text-right">Actual</th><th>Attainment</th></tr></thead>
       <tbody>${lines}</tbody></table>
     <p class="text-[10px] text-gray-400">Eligibility is assessed quarterly on average monthly performance. GMV is the primary gate — below 100% no GMV incentive is payable. Fee-income incentives apply separately once the ₹1L threshold is met and merchant activity is validated. 100% governance validation &amp; management approval are required before payout release.</p>
@@ -221,6 +305,75 @@ function scoreTile(label,val,color,sub){
     <div class="text-[10px] uppercase tracking-wide text-gray-500">${label}</div>
     <div class="text-lg font-bold text-${c}-700 leading-tight">${val}</div>
     ${sub?`<div class="text-[10px] text-gray-400">${sub}</div>`:''}</div>`;
+}
+
+/* ---- computed ₹ payout for a card (memo §7/§8), + book-to-ledger control ---- */
+function payoutBlock(c){
+  const p = c.payout; if(!p) return '';
+  const rows = (p.lines||[]).map(l=>`<div class="flex justify-between gap-2 py-0.5 border-b border-indigo-100/60">
+      <span class="text-gray-600">${esc(l.basis)}</span><span class="font-semibold whitespace-nowrap">${fmtBig(l.amount)}</span></div>`).join('')
+      || `<div class="text-gray-400 py-0.5">${esc(p.reason||'No payout')}</div>`;
+  const booked = p.booked_count>0
+      ? badge('Booked to ledger: '+fmtBig(p.booked_amount)+(p.booked_status?(' · '+p.booked_status):''), 'green')
+      : badge('Not booked yet','gray');
+  const canBook = CAN_INCENTIVE && p.eligible && ['published','acknowledged','locked'].includes(c.status);
+  const bookBtn = CAN_INCENTIVE
+      ? `<button onclick="bookPayout(${c.id})" ${canBook?'':'disabled'} class="btn-p ${canBook?'':'opacity-40 cursor-not-allowed'}" title="${canBook?'Compute and book the quarterly payout':'Publish the card and clear the GMV gate + governance first'}"><i class="fa-solid fa-indian-rupee-sign"></i> ${p.booked_count>0?'Re-compute & book':'Compute & book payout'}</button>`
+      : '';
+  return `<div class="rounded-lg border border-indigo-200 bg-indigo-50/50 p-2.5">
+    <div class="flex items-center justify-between mb-1">
+      <span class="text-[11px] font-semibold text-indigo-700 uppercase tracking-wide"><i class="fa-solid fa-indian-rupee-sign"></i> Computed quarterly payout</span>
+      <span class="text-base font-bold text-indigo-800">${fmtBig(p.total)}</span>
+    </div>
+    <div class="text-[11px]">${rows}</div>
+    <div class="flex items-center justify-between gap-2 mt-1.5 flex-wrap">
+      <div class="flex items-center gap-1">${booked} ${p.eligible?'':badge(p.reason,'yellow')}</div>
+      ${bookBtn}
+    </div>
+    <div class="text-[10px] text-gray-400 mt-1">GMV incentive ${fmtBig(p.gmv_incentive)} · Fee incentive ${fmtBig(p.fee_incentive)}. Booked rows land in the Incentives ledger as <b>accrued</b>, pending Finance approval &amp; payout.</div>
+  </div>`;
+}
+async function bookPayout(id){
+  if(!confirm('Compute this quarter\'s incentive from the current actuals and book it to the ledger?')) return;
+  const r = await apiSend('scorecards.php?book=1&id='+id, {});
+  if(!r.success) return toast(r.error||'Could not book', false);
+  toast('Payout booked: '+fmtBig(r.data.total)); openCard(id); load();
+}
+
+/* ---- incentive STRUCTURE editor (memo §7/§8 rates) ---- */
+const CFG_FIELDS = [
+  ['GMV base — bps reference on volume','gmv_base_bps','0.001'],
+  ['GMV base — % of that bps','gmv_base_share_pct','0.001'],
+  ['GMV gate — min attainment %','gmv_gate_min_pct','0.01'],
+  ['GMV accelerator — attainment % above','gmv_accel_pct','0.01'],
+  ['Multiplier 100–110% band (%)','gmv_pass_mult_pct','0.01'],
+  ['Multiplier accelerator band (%)','gmv_accel_mult_pct','0.01'],
+  ['Fee income — eligibility floor (₹)','fee_min','1'],
+  ['Fee income — slab-2 threshold (₹)','fee_slab2','1'],
+  ['Fee income — overachievement threshold (₹)','fee_slab3','1'],
+  ['Fee rate — ₹1L–₹2L slab (%)','fee_rate1_pct','0.01'],
+  ['Fee rate — above ₹2L (%)','fee_rate2_pct','0.01'],
+  ['Fee overachievement multiplier (%)','fee_overachieve_pct','0.01'],
+];
+async function openStructure(){
+  const r = await apiGet('scorecards.php',{config:1});
+  if(!r.success) return toast(r.error||'Failed', false);
+  const cfg = r.data.config, editable = r.data.can_edit;
+  const inputs = CFG_FIELDS.map(([lbl,key,step])=>`<label class="block">${lbl}
+      <input name="${key}" type="number" step="${step}" value="${cfg[key]}" ${editable?'':'disabled'} class="ctl w-full mt-0.5"></label>`).join('');
+  openModal(`<form onsubmit="saveStructure(event)" class="space-y-3 text-xs">
+    <p class="text-[11px] text-gray-500">These rates drive the <b>quarterly payout</b> computed on every scorecard (FY'26-'27 memo §7 &amp; §8). Changes apply to payouts booked from now on.</p>
+    <div class="grid grid-cols-2 gap-2">${inputs}</div>
+    ${editable?`<div class="flex justify-end gap-2"><button type="button" onclick="closeModal()" class="px-3 py-1.5 border rounded">Cancel</button><button class="btn-p">Save structure</button></div>`
+      :`<div class="text-[11px] text-gray-400">View only — your role cannot edit the incentive structure.</div>`}
+  </form>`, 'Incentive Structure');
+}
+async function saveStructure(e){
+  e.preventDefault();
+  const fd = Object.fromEntries(new FormData(e.target).entries());
+  const r = await apiSend('scorecards.php?config=1', fd);
+  if(!r.success) return toast(r.error||'Save failed', false);
+  toast('Incentive structure updated'); closeModal(); load();
 }
 
 async function updLine(id, kpi, field, value){
@@ -266,13 +419,14 @@ function renderMine(cards, period){
       ${scoreTile('Weighted score', s.weighted_pct+'%', RATING_COLOR[s.rating])}
       ${scoreTile('Rating', s.rating, RATING_COLOR[s.rating])}
       ${scoreTile('GMV gate', s.gate_pass?'PASS':'FAIL', s.gate_pass?'green':'red', s.gmv_attainment+'% of target')}
-      ${scoreTile('Payout', s.payout_ready?'READY':'ON HOLD', s.payout_ready?'green':'yellow', s.governance_ok?'validated':'pending validation')}
+      ${CAN_INCENTIVE?scoreTile('Payout', s.payout_ready?'READY':'ON HOLD', s.payout_ready?'green':'yellow', s.governance_ok?'validated':'pending validation')
+        :scoreTile('GMV attainment', s.gmv_attainment+'%', s.gate_pass?'green':'red', s.gate_pass?'gate cleared':'below target')}
     </div>
     <div class="flex flex-wrap gap-2 text-[11px]">
       ${s.accelerator?badge('Accelerator (GMV &gt;110%)','teal'):''}
-      ${badge('Fee incentive: '+(s.fee_incentive_eligible?('eligible '+s.fee_slab):'below ₹1L'), s.fee_incentive_eligible?'green':'gray')}
-      ${badge('GMV incentive: '+(s.gmv_incentive_eligible?'eligible':'not payable'), s.gmv_incentive_eligible?'green':'red')}
+      ${badge('Fee: '+s.fee_slab, s.fee_incentive_eligible?'green':'gray')}
     </div>
+    ${CAN_INCENTIVE?payoutBlock(c):''}
   </div>
   <div class="card mt-2">
     <div class="p-2 border-b text-[11px] font-semibold text-gray-600 uppercase tracking-wide">My KPIs — ${c.period}</div>

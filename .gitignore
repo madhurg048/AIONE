@@ -1,3 +1,17 @@
+# Environment / secrets. Only .env.example belongs in git.
+.env
+.env.*
+!.env.example
+
+# SQL dumps contain live data + integration secrets (telephony/WhatsApp/email API keys) — never commit
+database/*.sql
+database/backups/
+
+# Runtime artifacts
+data/uploads/
+logs/
+*.log
+
 # IDE
 .vscode/
 .idea/

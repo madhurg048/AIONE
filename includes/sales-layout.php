@@ -273,6 +273,11 @@ function sales_catalog(): array
         'leads'      => ['Leads',       'fa-user-plus',       'sales-leads.php'],
         'pipeline'   => ['Pipeline',    'fa-diagram-project', 'sales-pipeline.php'],
         'merchants'  => ['Merchants',   'fa-store',           'sales-merchants.php'],
+        // Service-only: every lead the Service team has captured (service-lead.php), draft or
+        // already handed to Sales — the Requests tab drops a lead the moment it's sent (it's
+        // vertical-scoped to 'service'), so this is where Service can still find it and see
+        // exactly who in Sales it landed on. See sales_groups() for why Sales doesn't get this tab.
+        'genleads'   => ['Generated Leads', 'fa-right-left',  'sales-genleads.php'],
         'transactions'=>['Transactions','fa-receipt',         'sales-transactions.php'],
         'chat'       => ['Live Chat',   'fa-comments',        'sales-chat.php'],
         'whatsapp'   => ['WhatsApp',    'fa-comment-dots',    'sales-whatsapp.php'],
@@ -299,10 +304,13 @@ function sales_catalog(): array
 function sales_groups(): array
 {
     $deptModules = ['leads', 'pipeline', 'merchants', 'transactions', 'incentives', 'reimbursements', 'scorecards', 'reports'];
+    // Sales has no equivalent tab — 'genleads' only ever lists leads Service itself captured.
+    $serviceModules = array_merge($deptModules, ['genleads']);
 
-    // Admin has no fixed vertical: give it BOTH a "Sales" and a "Service" dropdown (same
-    // module set each), hrefs tagged ?vertical=sales|service so current_vertical()'s
-    // admin override (_bootstrap.php) scopes the data the same way a dept manager sees it.
+    // Admin has no fixed vertical: give it BOTH a "Sales" and a "Service" dropdown, hrefs
+    // tagged ?vertical=sales|service so current_vertical()'s admin override (_bootstrap.php)
+    // scopes the data the same way a dept manager sees it. Service's dropdown gets the extra
+    // 'genleads' tab; Sales' doesn't.
     if (sales_role() === 'admin') {
         // Each dept dropdown starts with that dept's own dashboard (the 'service' tag routes
         // to sales-dashboard-service.php via sales_nav_href()).
@@ -310,7 +318,7 @@ function sales_groups(): array
             ['dashboard'],
             ['activity'],
             ['Sales',   'fa-briefcase', array_merge(['dashboard'], $deptModules), 'sales'],
-            ['Service', 'fa-headset',   array_merge(['dashboard'], $deptModules), 'service'],
+            ['Service', 'fa-headset',   array_merge(['dashboard'], $serviceModules), 'service'],
             ['Conversations',  'fa-comments',    ['chat', 'whatsapp', 'inbox', 'conversations', 'calls', 'tickets']],
             ['timesheet'],
             ['Admin',          'fa-user-shield', ['admin', 'org', 'users', 'settings', 'kpa', 'automation', 'integrations']],
@@ -331,12 +339,13 @@ function sales_groups(): array
         ];
     }
 
+    $isServiceDept = payg_role_dept(sales_role()) === 'Service';
     return [
         ['dashboard'],
         ['hr'],
         ['it'],
         ['activity'],
-        [sales_vertical_label(), 'fa-briefcase',   $deptModules],
+        [sales_vertical_label(), 'fa-briefcase',   $isServiceDept ? $serviceModules : $deptModules],
         ['Conversations',  'fa-comments',    ['chat', 'whatsapp', 'inbox', 'conversations', 'calls', 'tickets']],
         ['timesheet'],
         ['Admin',          'fa-user-shield', ['admin', 'org', 'users', 'settings', 'kpa', 'automation', 'integrations']],
@@ -362,6 +371,49 @@ function sales_accessible_pages(): array
  * Emits a placeholder + a self-contained script (uses shared apiGet/inr/badge/esc from
  * sales_scripts()); the fetch runs on DOMContentLoaded so those helpers are defined.
  */
+/**
+ * Read-only "My KPA / KRA Goals" widget — the goals set for the logged-in user by HR / their
+ * manager (org + team goals they inherit). This is what a Sales Exec sees in place of the
+ * management scorecard: their performance areas and targets, not any payout figure. Any role
+ * with goals sees it; self-hides when the user has none. Uses kpa.php?action=my_goals, which
+ * only ever returns the caller's OWN applicable goals (safe for every role).
+ */
+function sales_my_goals_widget(): void
+{
+    ?>
+    <div id="myKpaGoals" class="hidden"></div>
+    <script>
+    window.addEventListener('DOMContentLoaded', async function () {
+      try {
+        const r = await apiGet('kpa.php', { action: 'my_goals' });
+        const goals = (r && r.data && r.data.goals) || [];
+        if (!goals.length) return;                         // no goals set -> stay hidden
+        const U = { inr:'₹', pct:'%', count:'#', flag:'', text:'' };
+        const rows = goals.map(g => {
+          const tgt = g.target_value ? ('<span class="text-gray-500">Target:</span> <b>' + esc(g.target_value) + (U[g.unit]||'') + '</b>') : '';
+          const src = g.relation === 'org' ? badge(esc(g.org_group||'Org'), 'indigo') : badge('Manager', 'blue');
+          return `<div class="border-b border-gray-100 py-1.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-medium text-gray-800">${esc(g.title)}</span>
+              <span class="whitespace-nowrap text-[11px]">${src}${g.weight?(' <span class="text-gray-400">'+g.weight+'%</span>'):''}</span>
+            </div>
+            ${g.kra?`<div class="text-[11px] text-gray-500">${esc(g.kra)}</div>`:''}
+            <div class="text-[11px] mt-0.5 flex gap-3">${tgt}<span class="text-gray-400">${esc(g.period||'')}</span></div>
+          </div>`;
+        }).join('');
+        const el = document.getElementById('myKpaGoals');
+        el.className = 'card p-3';
+        el.innerHTML = `<div class="flex items-center justify-between mb-1">
+            <span class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide"><i class="fa-solid fa-crosshairs text-indigo-500"></i> My Goals — KPA / KRA</span>
+            <span class="text-[10px] text-gray-400">Set by HR / your manager</span>
+          </div>${rows}`;
+        el.classList.remove('hidden');
+      } catch (e) { /* keep hidden on any error */ }
+    });
+    </script>
+    <?php
+}
+
 function sales_goal_widget(): void
 {
     // Admin is an oversight role with no personal sales quota — they manage everyone's
@@ -371,9 +423,12 @@ function sales_goal_widget(): void
     if (sales_role() === 'admin') return;
     $allowed = sales_allowed_modules();
     if ($allowed && !in_array('scorecards', $allowed, true)) return; // role can't have goals
+    // Payout/incentive readiness is management information — a rep sees their KPIs, not their pay.
+    $seeIncentive = payg_role_can(sales_role(), 'incentive_manage');
     ?>
     <div id="myGoal" class="hidden"></div>
     <script>
+    const GOAL_SEE_INCENTIVE = <?= $seeIncentive ? 'true' : 'false' ?>;
     window.addEventListener('DOMContentLoaded', async function () {
       try {
         const r = await apiGet('scorecards.php', { mine: 1 });
@@ -415,7 +470,7 @@ function sales_goal_widget(): void
             <div><div class="kv">${fmtBig(feeActual)}</div><div class="kl">Fee income · ${s.fee_slab}</div></div>
             <div><div class="kv">${activeActual}</div><div class="kl">Active merchants</div></div>
             <div><div class="kv ${s.gate_pass?'text-green-600':'text-red-600'}">${s.gate_pass?'PASS':'FAIL'}</div><div class="kl">GMV gate</div></div>
-            <div><div class="kv ${s.payout_ready?'text-green-600':'text-yellow-600'}">${s.payout_ready?'READY':'ON HOLD'}</div><div class="kl">Payout</div></div>
+            ${GOAL_SEE_INCENTIVE?`<div><div class="kv ${s.payout_ready?'text-green-600':'text-yellow-600'}">${s.payout_ready?'READY':'ON HOLD'}</div><div class="kl">Payout</div></div>`:''}
           </div>`;
         el.classList.remove('hidden');
       } catch (e) { /* keep hidden on any error */ }
@@ -631,32 +686,179 @@ function toggleMobileNav(){ document.getElementById('mobileNav')?.classList.togg
 (function(){ const ping=()=>apiSend('auth.php?action=heartbeat', {}).catch(()=>{}); ping(); setInterval(ping, 30000); })();
 </script>
 <?php if (sales_role() === 'service_exec'): ?>
+<style>
+@keyframes svcNotifyIn { from { opacity:0; transform:translateX(24px); } to { opacity:1; transform:translateX(0); } }
+</style>
 <script>
-/* Unclaimed-ticket alert — present on EVERY page (not just Tickets/Leads), so a Service exec
-   is notified wherever they happen to be in the CRM. Visual-only (badge count + a one-time
-   desktop notification on the first ticket landing in an empty queue) — deliberately NO sound.
-   The live-chat waiting alarm in sales-chat.php is the only audible alarm in the app; a Service
-   exec on the Live Chat page must be able to tell "a chat is waiting" apart from "a ticket needs
-   claiming" by ear, and ringing both at once made that impossible. */
-let _ticketSeenCount = null;
-async function _pollUnclaimedTickets() {
-  try {
-    const { data } = await apiGet('tickets.php', { action: 'unclaimed_count' });
-    const n = data.unclaimed || 0;
-    const badge = document.getElementById('ticketBadge');
-    if (badge) { badge.textContent = n; badge.classList.toggle('hidden', n === 0); }
-    if (_ticketSeenCount !== null && n > _ticketSeenCount && 'Notification' in window && Notification.permission === 'granted') {
-      const notif = new Notification('Unclaimed ticket', { body: n + ' ticket(s) waiting to be claimed' });
-      // Clicking the notification should bring you straight to where you can act on it: focus
-      // this tab and land on the Requests queue (Claim there now also opens the live chat, if any).
-      notif.onclick = () => { window.focus(); window.location.href = 'sales-requests-service.php'; notif.close(); };
+/* ============================================================================================
+   UNIFIED SERVICE NOTIFIER — present on EVERY page, Service execs only (never admin/manager).
+   One poller drives an on-screen popup stack + an audible alarm for every kind of unclaimed work
+   that needs a Service exec RIGHT NOW: a waiting live chat (chatbot service/transaction), an
+   unassigned WhatsApp conversation with a fresh inbound, a ringing inbound call, and a chatbot
+   "call me back" request. See api/sales/notifications.php.
+
+   Each popup carries an Accept / Pick up button that claims the item (first-to-click-wins, atomic
+   server-side) and jumps straight into that customer's chat/thread/call. The alarm is DECLARATIVE:
+   it rings while the latest poll still contains items and stops the instant the list is empty. So
+   the moment ANY agent claims an item, it drops out of every agent's next poll — their popup
+   vanishes and, once nothing is left, the sound stops on every screen. That is the fix for the old
+   "sound kept ringing after accepting" bug: nothing depends on catching a one-off "accepted" event.
+   ============================================================================================ */
+(function () {
+  const openMap = new Map();            // key -> { kind, el }
+  let alarmTimer = null, currentTone = null, audioCtx = null;
+
+  const stack = document.createElement('div');
+  stack.id = 'svcNotifyStack';
+  stack.style.cssText = 'position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:10px;max-width:340px;';
+  document.body.appendChild(stack);
+
+  /* ---- audio: high-pitch tones, unlocked on the first real user gesture ---- */
+  function getCtx() {
+    if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+    return audioCtx;
+  }
+  ['click', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, getCtx, { once: true, passive: true }));
+  function playTone(profile) {
+    const ctx = getCtx(); if (!ctx) return;
+    try {
+      const beep = (freq, start, dur, vol) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'square'; o.frequency.value = freq;
+        o.connect(g); g.connect(ctx.destination);
+        g.gain.setValueAtTime(0.0001, start);
+        g.gain.exponentialRampToValueAtTime(vol, start + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+        o.start(start); o.stop(start + dur + 0.03);
+      };
+      const now = ctx.currentTime;
+      if (profile === 'call') {
+        // Phone-style urgent double-ring — distinct from chat, but same high register.
+        beep(1600, now, 0.18, 0.38); beep(1950, now + 0.14, 0.24, 0.38);
+        beep(1600, now + 0.46, 0.18, 0.38); beep(1950, now + 0.60, 0.24, 0.38);
+      } else {
+        // Bright high-pitch alert chime for chat / whatsapp / callback.
+        beep(1850, now, 0.16, 0.32); beep(2300, now + 0.14, 0.24, 0.32);
+      }
+    } catch (e) { }
+  }
+  function startAlarm(profile) {
+    if (alarmTimer && currentTone === profile) return;   // already ringing this tone
+    if (alarmTimer) { clearInterval(alarmTimer); alarmTimer = null; }
+    currentTone = profile;
+    playTone(profile);
+    alarmTimer = setInterval(() => playTone(profile), profile === 'call' ? 2400 : 3500);
+  }
+  function stopAlarm() { if (alarmTimer) { clearInterval(alarmTimer); alarmTimer = null; } currentTone = null; }
+  function refreshAlarm() {
+    if (openMap.size === 0) { stopAlarm(); return; }
+    let hasCall = false; openMap.forEach(v => { if (v.kind === 'call') hasCall = true; });
+    startAlarm(hasCall ? 'call' : 'alert');       // a ringing call takes the distinct tone
+  }
+
+  /* ---- popup cards ---- */
+  const ICON = { chat: 'fa-comments', whatsapp: 'fa-whatsapp', call: 'fa-phone-volume', callback: 'fa-phone-flip' };
+  const ACCENT = { chat: '#4f46e5', whatsapp: '#16a34a', call: '#dc2626', callback: '#d97706' };
+  function dropCard(key) { const v = openMap.get(key); if (v) { v.el.remove(); openMap.delete(key); } refreshAlarm(); }
+
+  async function accept(it, card) {
+    const btn = card.querySelector('[data-act="accept"]');
+    if (btn) { btn.disabled = true; btn.style.opacity = 0.6; }
+    const gone = (msg) => { toast(msg || 'Already taken by another agent', false); dropCard(it.key); };
+    try {
+      if (it.kind === 'chat') {
+        const r = await apiSend('chat.php?action=pickup', { session_id: it.ref_id });
+        if (!r.success) return gone(r.error);
+        location.href = 'sales-chat.php?open=' + it.ref_id + '&tab=active';
+      } else if (it.kind === 'whatsapp') {
+        const r = await apiGet('whatsapp-chat.php', { action: 'open_by_phone', phone: it.phone || '', name: it.name || '' });
+        if (!r.success) return gone(r.error);
+        location.href = 'sales-whatsapp.php?phone=' + encodeURIComponent(it.phone || '');
+      } else if (it.kind === 'call') {
+        const r = await apiSend('calls.php?action=claim', { call_id: it.ref_id });
+        if (!r.success) return gone(r.error || 'Already picked up');
+        location.href = 'sales-calls.php';
+      } else if (it.kind === 'callback') {
+        const r = await apiSend('tickets.php?action=claim', { id: it.ref_id });
+        if (!r.success) return gone(r.error || 'Already claimed');
+        location.href = 'sales-requests-service.php';
+      }
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.style.opacity = 1; }
+      toast('Network error — please try again', false);
     }
-    _ticketSeenCount = n;
-  } catch (e) { }
-}
-if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
-_pollUnclaimedTickets();
-setInterval(_pollUnclaimedTickets, 10000);
+  }
+
+  function renderCard(it) {
+    const accent = ACCENT[it.kind] || '#4f46e5';
+    const card = document.createElement('div');
+    card.dataset.key = it.key;
+    card.style.cssText = `background:#fff;border-left:5px solid ${accent};border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:12px 14px;animation:svcNotifyIn .18s ease-out;`;
+    card.innerHTML = `
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <div style="width:34px;height:34px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;color:#fff;background:${accent};"><i class="fa-solid ${ICON[it.kind] || 'fa-bell'}"></i></div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:11px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:.03em;">${esc(it.title)}</div>
+          <div style="font-size:13px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(it.name)}</div>
+          <div style="font-size:11px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(it.subtitle)}</div>
+        </div>
+        <button data-act="dismiss" title="Dismiss on my screen only" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:16px;line-height:1;">&times;</button>
+      </div>
+      <div style="margin-top:10px;">
+        <button data-act="accept" style="width:100%;background:${accent};color:#fff;border:none;border-radius:6px;padding:7px 0;font-size:12px;font-weight:600;cursor:pointer;">
+          ${it.kind === 'call' ? '<i class="fa-solid fa-phone"></i> Pick up' : '<i class="fa-solid fa-check"></i> Accept'}
+        </button>
+      </div>`;
+    card.querySelector('[data-act="accept"]').onclick = () => accept(it, card);
+    card.querySelector('[data-act="dismiss"]').onclick = () => dropCard(it.key);
+    return card;
+  }
+
+  /* ---- poll + reconcile ---- */
+  async function poll() {
+    let data;
+    try { const res = await apiGet('notifications.php', {}); data = res && res.data; } catch (e) { return; }
+    if (!data) return;
+    const items = data.items || [];
+    const seen = new Set();
+    items.forEach(it => {
+      seen.add(it.key);
+      if (!openMap.has(it.key)) {
+        const card = renderCard(it);
+        openMap.set(it.key, { kind: it.kind, el: card });
+        stack.appendChild(card);
+        // If the tab is in the background, also nudge with a desktop notification (click = focus).
+        if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+          const n = new Notification(it.title, { body: it.name + ' — ' + it.subtitle });
+          n.onclick = () => { window.focus(); n.close(); };
+        }
+      }
+    });
+    // Any card whose item is no longer returned was claimed elsewhere (or expired) — drop it. This
+    // is what makes the popup vanish and the alarm fall silent on every OTHER agent's screen.
+    openMap.forEach((v, key) => { if (!seen.has(key)) dropCard(key); });
+    refreshAlarm();
+  }
+
+  /* Nav "Requests" badge — full unclaimed-ticket count (numeric only, no sound; the audible
+     alerting is the popup notifier above). Kept as its own slow poll so the badge still reflects
+     every unclaimed ticket, not just the callback subset the notifier pops. */
+  async function pollTicketBadge() {
+    try {
+      const { data } = await apiGet('tickets.php', { action: 'unclaimed_count' });
+      const n = (data && data.unclaimed) || 0;
+      const badge = document.getElementById('ticketBadge');
+      if (badge) { badge.textContent = n; badge.classList.toggle('hidden', n === 0); }
+    } catch (e) { }
+  }
+
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+  poll();
+  setInterval(poll, 4000);
+  pollTicketBadge();
+  setInterval(pollTicketBadge, 10000);
+})();
 </script>
 <?php endif; ?>
 </body>

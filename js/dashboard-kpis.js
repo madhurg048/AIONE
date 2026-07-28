@@ -12,6 +12,9 @@
 
 let _dkCharts = [];
 let _dkVertical = null, _dkContainer = null, _dkCatalog = [], _dkEditing = null;
+let _dkPageVertical = null;         // the dashboard page's own vertical (fixed)
+let _dkManageVertical = null;       // 'both' (governor) | 'sales' | 'service' | null
+const dkSpan = k => Math.max(1, Math.min(4, +(k && k.col_span) || 1));
 
 function dkFmt(v, unit) {
   v = +v || 0;
@@ -35,14 +38,16 @@ function dkStatusColor(a) {
 const DK_PERIOD_LABEL = { today: 'today', '7d': 'last 7 days', month: 'this month', quarter: 'this quarter', all: 'all time' };
 
 async function initCustomKpis(vertical, container) {
-  _dkVertical = vertical; _dkContainer = container;
+  _dkVertical = vertical; _dkPageVertical = vertical; _dkContainer = container;
   await renderCustomKpis();
 }
 
 async function renderCustomKpis() {
-  const res = await apiGet('dashboard-kpis.php', { action: 'list', vertical: _dkVertical });
+  // the dashboard grid always shows THIS page's department, regardless of any manage-modal switch
+  const res = await apiGet('dashboard-kpis.php', { action: 'list', vertical: _dkPageVertical });
   if (!res.success) { _dkContainer.innerHTML = ''; return; }
   const { kpis, can_manage } = res.data;
+  _dkManageVertical = res.data.manage_vertical || null;
   if (!kpis.length && !can_manage) { _dkContainer.innerHTML = ''; return; }
 
   _dkCharts.forEach(c => { try { c.destroy(); } catch (e) {} });
@@ -79,17 +84,18 @@ function dkItemHtml(k) {
     ? `<div class="text-[10px] text-gray-400">target ${dkFmt(k.target_value, k.unit)} · <span class="text-${col === 'yellow' ? 'amber' : col}-600 font-semibold">${a === null ? '' : Math.round(a * 100) + '%'}</span></div>`
     : `<div class="text-[10px] text-gray-400">${esc(k.metric_label)}</div>`;
 
+  const span = `style="grid-column:span ${dkSpan(k)}"`;
   if (k.display === 'kpi') {
     const bar = k.target_value !== null
       ? `<div class="w-full h-1.5 bg-gray-100 rounded mt-1"><div class="h-1.5 rounded bg-${col === 'yellow' ? 'amber' : col}-500" style="width:${Math.min(100, Math.max(3, Math.round((a || 0) * 100)))}%"></div></div>`
       : '';
-    return `<div class="border rounded-lg p-2">
+    return `<div class="border rounded-lg p-2" ${span}>
       <div class="text-[10px] uppercase tracking-wide text-gray-500 truncate" title="${esc(k.title)}">${esc(k.title)} <span class="normal-case">· ${per}</span></div>
       <div class="text-xl font-bold text-gray-800 leading-6">${dkFmt(k.value, k.unit)}</div>
       ${tgt}${bar}</div>`;
   }
   // chart items (bar / line / donut)
-  return `<div class="border rounded-lg p-2">
+  return `<div class="border rounded-lg p-2" ${span}>
     <div class="text-[10px] uppercase tracking-wide text-gray-500 truncate" title="${esc(k.title)}">${esc(k.title)} <span class="normal-case">· ${per}</span></div>
     <div class="flex items-baseline gap-2"><span class="text-sm font-bold text-gray-800">${dkFmt(k.value, k.unit)}</span>${tgt}</div>
     <div style="height:110px"><canvas id="dkC${k.id}"></canvas></div></div>`;
@@ -130,16 +136,28 @@ function dkDonutChart(k) {
 
 async function dkOpenManage() {
   if (!document.getElementById('dkModal')) dkBuildModal();
+  _dkVertical = _dkPageVertical;                     // start on this page's own department
+  // A KPI governor (Admin / HR / Sales Head) may manage any department's cards from here.
+  const sw = document.getElementById('dkVerticalSwitch');
+  if (_dkManageVertical === 'both') { sw.classList.remove('hidden'); sw.value = _dkVertical; }
+  else { sw.classList.add('hidden'); }
+  await dkLoadManageVertical();
+  document.getElementById('dkModal').classList.remove('hidden');
+  document.getElementById('dkModal').classList.add('flex');
+}
+/* (re)load the metric catalog + KPI list for whichever department is selected in the modal */
+async function dkLoadManageVertical() {
   const cat = await apiGet('dashboard-kpis.php', { action: 'catalog', vertical: _dkVertical });
   _dkCatalog = (cat.data && cat.data.metrics) || [];
   const sel = document.getElementById('dkfMetric');
   sel.innerHTML = '<option value="">Metric…</option>' + _dkCatalog.map(m =>
     `<option value="${m.key}" data-snapshot="${m.snapshot ? 1 : 0}">${esc(m.label)}</option>`).join('');
+  document.getElementById('dkManageScope').textContent =
+    '— visible to the whole ' + (_dkVertical === 'service' ? 'Service' : 'Sales') + ' team';
   dkResetForm();
   await dkRenderManageList();
-  document.getElementById('dkModal').classList.remove('hidden');
-  document.getElementById('dkModal').classList.add('flex');
 }
+async function dkSwitchVertical(v) { _dkVertical = v; await dkLoadManageVertical(); }
 function dkCloseManage() {
   const m = document.getElementById('dkModal');
   m.classList.add('hidden'); m.classList.remove('flex');
@@ -156,7 +174,7 @@ async function dkRenderManageList() {
     <tr class="${k.is_active ? '' : 'opacity-50'}">
       <td class="text-[11px] font-medium">${esc(k.title)}</td>
       <td class="text-[10px] text-gray-500">${esc(k.metric_label)}</td>
-      <td class="text-[10px]">${k.display} · ${DK_PERIOD_LABEL[k.period] || k.period}</td>
+      <td class="text-[10px]">${k.display} · ${DK_PERIOD_LABEL[k.period] || k.period} · ${dkSpan(k)}-wide</td>
       <td class="text-[10px] text-right">${k.target_value !== null ? dkFmt(k.target_value, k.unit) : '—'}</td>
       <td class="text-right whitespace-nowrap">
         <button onclick="dkEdit(${k.id})" class="text-indigo-600 hover:underline text-[10px] mr-2"><i class="fa-solid fa-pen"></i></button>
@@ -179,6 +197,7 @@ function dkEdit(id) {
   f.target_value.value = k.target_value === null ? '' : k.target_value;
   f.direction.value = k.direction;
   f.sort_order.value = k.sort_order;
+  f.col_span.value = dkSpan(k);
   document.getElementById('dkFormTitle').textContent = 'Edit KPI';
   document.getElementById('dkSubmitBtn').textContent = 'Save changes';
   dkSyncDisplayOptions();
@@ -216,6 +235,7 @@ async function dkSubmit(ev) {
     target_value: f.target_value.value === '' ? null : +f.target_value.value,
     direction: f.direction.value,
     sort_order: +f.sort_order.value || 0,
+    col_span: +f.col_span.value || 1,
   };
   if (!payload.metric_key) return toast('Pick a metric', false);
   const res = _dkEditing
@@ -246,8 +266,11 @@ function dkBuildModal() {
   div.innerHTML = `
   <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
     <div class="flex items-center justify-between px-4 py-3 border-b">
-      <h3 class="font-semibold text-gray-800"><i class="fa-solid fa-sliders text-indigo-600"></i> Manage Dashboard KPIs
-        <span class="text-gray-400 font-normal text-xs">— visible to the whole ${_dkVertical === 'service' ? 'Service' : 'Sales'} team</span></h3>
+      <h3 class="font-semibold text-gray-800 flex items-center gap-2"><i class="fa-solid fa-sliders text-indigo-600"></i> Manage Dashboard KPIs
+        <select id="dkVerticalSwitch" onchange="dkSwitchVertical(this.value)" class="hidden border rounded px-2 py-1 text-xs font-normal">
+          <option value="sales">Sales dashboard</option><option value="service">Service dashboard</option>
+        </select>
+        <span id="dkManageScope" class="text-gray-400 font-normal text-xs"></span></h3>
       <button onclick="dkCloseManage()" class="text-gray-400 hover:text-gray-700"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="overflow-y-auto p-4 space-y-4">
@@ -281,8 +304,14 @@ function dkBuildModal() {
             <option value="higher">Higher is better</option><option value="lower">Lower is better</option>
           </select>
         </div>
-        <div class="flex items-center justify-between">
-          <input name="sort_order" type="number" step="1" value="0" class="border rounded px-2 py-1.5 w-24" title="Sort order">
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <input name="sort_order" type="number" step="1" value="0" class="border rounded px-2 py-1.5 w-20" title="Sort order (lower first)" placeholder="order">
+            <select name="col_span" class="border rounded px-2 py-1.5" title="Card width (grid columns)">
+              <option value="1">Width: 1 col</option><option value="2">Width: 2 cols</option>
+              <option value="3">Width: 3 cols</option><option value="4">Width: 4 cols (full)</option>
+            </select>
+          </div>
           <button id="dkSubmitBtn" class="bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700">Add KPI</button>
         </div>
       </form>

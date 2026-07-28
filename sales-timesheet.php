@@ -15,8 +15,8 @@ sales_nav('timesheet');
     <span id="dayTotal" class="text-xs text-gray-500"></span>
     <div class="flex-1"></div>
     <button onclick="aiFill()" class="ctl hover:bg-gray-50"><i class="fa-solid fa-wand-magic-sparkles text-purple-500"></i> AI fill</button>
-    <!-- Voice dictation disabled — button removed (see api/sales/voice-transcribe.php, which
-         now hard-rejects too, so this isn't just a hidden-but-reachable feature). -->
+    <!-- Voice dictation has been removed org-wide: the mic button, the transcribe endpoint
+         and the timesheet ?parse= handler are all gone. Entries are manual or AI-filled. -->
     <button onclick="addRow()" class="ctl hover:bg-gray-50"><i class="fa-solid fa-plus"></i> Entry</button>
     <button onclick="submitDay()" class="btn-p"><i class="fa-solid fa-paper-plane"></i> Submit for approval</button>
   </div>
@@ -80,7 +80,7 @@ async function del(id){ await apiSend('timesheet.php?id='+id, {status:'rejected'
 
 async function addRow(desc){
   const date = document.getElementById('date').value;
-  await apiSend('timesheet.php', { entry_date: date, hours: 1, activity_type: 'other', description: desc || '', source: desc ? 'voice' : 'manual' });
+  await apiSend('timesheet.php', { entry_date: date, hours: 1, activity_type: 'other', description: desc || '', source: 'manual' });
   loadDay();
 }
 

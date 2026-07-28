@@ -185,9 +185,18 @@ function goalRow(g, showApplies, empFilter){
 }
 function goalTable(rows, showApplies, empFilter){
   if (!rows.length) return '<div class="text-xs text-gray-400 py-3 text-center">No KPAs yet.</div>';
+  const cols = (showApplies ? 8 : 7);
+  const sum = rows.reduce((a,g)=>a+Number(g.weight||0),0);
+  const ok = Math.abs(sum-100) < 0.01;
+  // A person's KPA weights should add up to 100% (each is a share of overall performance).
+  const foot = sum>0 ? `<tfoot><tr class="border-t"><td colspan="${cols}" class="text-[11px] py-1">
+      <span class="${ok?'text-green-600':'text-amber-600'} font-semibold">Weights total: ${(Math.round(sum*100)/100)}%</span>
+      ${ok?'<i class="fa-solid fa-check text-green-500 ml-1"></i>'
+          :`<span class="text-amber-600 ml-1"><i class="fa-solid fa-triangle-exclamation"></i> should sum to 100% (currently ${sum<100?'under':'over'} by ${(Math.round(Math.abs(sum-100)*100)/100)}%)</span>`}
+    </td></tr></tfoot>` : '';
   return `<table class="dense w-full"><thead><tr>
     <th>KPA / KRA</th>${showApplies?'<th>Applies to</th>':''}<th>Weight</th><th>Target</th><th>Hours</th><th>Period</th><th>Source</th><th></th>
-    </tr></thead><tbody>${rows.map(g=>goalRow(g, showApplies, empFilter)).join('')}</tbody></table>`;
+    </tr></thead><tbody>${rows.map(g=>goalRow(g, showApplies, empFilter)).join('')}</tbody>${foot}</table>`;
 }
 async function toggleContrib(rid, goalId, emp){
   const row = document.getElementById('cd-'+rid), ic = document.getElementById('ic-'+rid);

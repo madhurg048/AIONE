@@ -29,13 +29,13 @@ $__kpaMgrPlus = $__kpaRole === 'admin' || $__kpaRole === 'manager' || $__kpaRole
   </a>
   <?php endif; ?>
 
-  <!-- AI & VOICE -->
+  <!-- AI ENGINE -->
   <div class="card p-3">
     <div class="flex items-center justify-between mb-1">
-      <h3 class="text-[12px] font-semibold text-gray-700 uppercase tracking-wide"><i class="fa-solid fa-microchip text-indigo-500"></i> AI &amp; Voice Engine <button type="button" onclick="showHelp('ai')" class="ml-2 text-[10px] normal-case font-normal text-indigo-500 hover:text-indigo-700" title="Setup help"><i class="fa-regular fa-circle-question"></i> Need keys?</button></h3>
+      <h3 class="text-[12px] font-semibold text-gray-700 uppercase tracking-wide"><i class="fa-solid fa-microchip text-indigo-500"></i> AI Engine <button type="button" onclick="showHelp('ai')" class="ml-2 text-[10px] normal-case font-normal text-indigo-500 hover:text-indigo-700" title="Setup help"><i class="fa-regular fa-circle-question"></i> Need keys?</button></h3>
       <span id="aiHealth" class="text-[11px]"></span>
     </div>
-    <p class="text-xs text-gray-500 mb-2">Route AI (lead scoring, insights, summaries, coaching) to your on-prem <b>AI box</b>. If the box is down it falls over to the cloud. Voice uses a separate key.</p>
+    <p class="text-xs text-gray-500 mb-2">Route AI (lead scoring, insights, summaries, coaching) to your on-prem <b>AI box</b>. If the box is down it falls over to the cloud.</p>
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
       <label class="flex items-center gap-1.5 mt-4"><input type="checkbox" id="aiBoxEnabled" class="chk"> Use AI box</label>
@@ -45,8 +45,6 @@ $__kpaMgrPlus = $__kpaRole === 'admin' || $__kpaRole === 'manager' || $__kpaRole
       <label class="flex items-center gap-1.5 mt-4"><input type="checkbox" id="aiCloudEnabled" class="chk"> Cloud fallback</label>
       <label class="md:col-span-2">Cloud AI endpoint<input id="aiCloudUrl" class="ctl w-full mt-1" placeholder="https://…/chat_v3"></label>
       <label>Cloud API key<input id="aiCloudKey" type="password" class="ctl w-full mt-1" placeholder="optional"></label>
-      <label class="md:col-span-2">Voice API URL<input id="aiVoiceUrl" class="ctl w-full mt-1" placeholder="https://…/voice/transcribe"></label>
-      <label class="md:col-span-2">Voice API key<input id="aiVoiceKey" type="password" class="ctl w-full mt-1" placeholder="separate from AI"></label>
     </div>
     <div class="flex flex-wrap items-center gap-2 mt-3">
       <button onclick="saveAi()" class="btn-p"><i class="fa-solid fa-floppy-disk"></i> Save</button>
@@ -512,20 +510,19 @@ function renderHealth(h){
 async function loadAi(){
   const { data } = await apiGet('ai-settings.php'); const c = data.config||{};
   E('aiBoxEnabled').checked = c.box_enabled==1; E('aiBoxUrl').value = c.box_url||'';
-  E('aiCloudEnabled').checked = c.cloud_enabled==1; E('aiCloudUrl').value = c.cloud_url||''; E('aiVoiceUrl').value = c.voice_url||'';
+  E('aiCloudEnabled').checked = c.cloud_enabled==1; E('aiCloudUrl').value = c.cloud_url||'';
   E('aiKey').placeholder = c.has_ai_api_key?'•••••• (saved)':'optional';
   E('aiRestartTok').placeholder = c.has_restart_token?'•••••• (saved)':'to bring box up';
   E('aiCloudKey').placeholder = c.has_cloud_api_key?'•••••• (saved)':'optional';
-  E('aiVoiceKey').placeholder = c.has_voice_api_key?'•••••• (saved)':'separate from AI';
   renderHealth(data.health);
 }
 async function saveAi(){
   const b = { box_enabled:E('aiBoxEnabled').checked?1:0, box_url:E('aiBoxUrl').value,
-    cloud_enabled:E('aiCloudEnabled').checked?1:0, cloud_url:E('aiCloudUrl').value, voice_url:E('aiVoiceUrl').value };
-  ['aiKey:ai_api_key','aiRestartTok:restart_token','aiCloudKey:cloud_api_key','aiVoiceKey:voice_api_key'].forEach(p=>{
+    cloud_enabled:E('aiCloudEnabled').checked?1:0, cloud_url:E('aiCloudUrl').value };
+  ['aiKey:ai_api_key','aiRestartTok:restart_token','aiCloudKey:cloud_api_key'].forEach(p=>{
     const [id,k]=p.split(':'); if(E(id).value) b[k]=E(id).value; });
   const r = await apiSend('ai-settings.php', b);
-  if (r.success){ toast('AI settings saved'); ['aiKey','aiRestartTok','aiCloudKey','aiVoiceKey'].forEach(i=>E(i).value=''); loadAi(); }
+  if (r.success){ toast('AI settings saved'); ['aiKey','aiRestartTok','aiCloudKey'].forEach(i=>E(i).value=''); loadAi(); }
   else toast(r.error||'Failed', false);
 }
 async function checkAi(){
@@ -632,14 +629,14 @@ const HELP = {
         link: { label: 'Google App Passwords', url: 'https://myaccount.google.com/apppasswords' } }],
     fields: 'Fill: Protocol (IMAP), Host, Port, Encryption, Username, Password, Folder (INBOX).' },
 
-  ai: { title: 'AI box & voice keys',
-    intro: 'The AI box is your <b>Superchat</b> on-prem engine. For the box address, API keys, voice endpoint and restart token, contact Superchat.',
+  ai: { title: 'AI box keys',
+    intro: 'The AI box is your <b>Superchat</b> on-prem engine. For the box address, API key and restart token, contact Superchat.',
     steps: [
-      'Enter the <b>AI box URL/IP</b> your Superchat deployment runs on (e.g. <i>http://192.168.0.100:8000</i>).',
-      'Get the <b>AI API key</b>, <b>Voice API key</b> and <b>Restart token</b> from Superchat and paste them here.',
+      'Enter the <b>AI box URL/IP</b> your Superchat deployment runs on. It must be reachable from the server the CRM runs on — a LAN address will not work from a cloud host.',
+      'Get the <b>AI API key</b> and <b>Restart token</b> from Superchat and paste them here.',
       '<b>Cloud fallback</b> (optional): an external chat endpoint used only when the box is down.'],
     link: { label: 'For keys, contact Superchat — superchat.in', url: 'https://www.superchat.in' },
-    fields: 'Fill: AI box URL, AI key, Voice URL + key, Restart token, Cloud endpoint (optional).' }
+    fields: 'Fill: AI box URL, AI key, Restart token, Cloud endpoint (optional).' }
 };
 
 function showHelp(key){

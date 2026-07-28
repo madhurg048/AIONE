@@ -1,23 +1,30 @@
 <?php
 require_once __DIR__ . '/includes/sales-layout.php';
 $me = sales_guard();
+// Sales dept doesn't work live chat (that's Service/Support's queue) — hide the Live Chats
+// panel and its auto-assign controls/KPIs on this shared monitor for sales_head/manager/sales_exec.
+$hideLiveChat = payg_role_dept(sales_role()) === 'Sales';
 sales_head('Conversations');
 sales_header($me, 'Live Conversations Monitor');
 sales_nav('conversations');
 ?>
 <main class="p-2 space-y-2">
   <div id="convKpis" class="kstrip"></div>
+  <?php if (!$hideLiveChat): ?>
   <div class="card p-2 flex flex-wrap items-center gap-3">
     <label class="flex items-center gap-1.5 text-xs text-gray-700"><input type="checkbox" id="autoAssign" class="chk" onchange="saveAuto()"> <b>Auto-assign</b> new chats (round-robin to the next free operator)</label>
     <button onclick="distribute()" class="ctl hover:bg-gray-50"><i class="fa-solid fa-share-nodes"></i> Distribute waiting now</button>
     <span class="flex-1"></span>
     <label class="flex items-center gap-1.5 text-[11px] text-gray-500"><input type="checkbox" id="notifyOn" class="chk" onchange="toggleNotify()"> 🔔 Alert me on new free chats</label>
   </div>
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-2">
+  <?php endif; ?>
+  <div class="grid grid-cols-1 <?= $hideLiveChat ? 'lg:grid-cols-2' : 'lg:grid-cols-3' ?> gap-2">
+    <?php if (!$hideLiveChat): ?>
     <div class="card">
       <div class="p-2 border-b text-[11px] font-semibold text-gray-600 uppercase tracking-wide"><i class="fa-solid fa-comments text-indigo-500"></i> Live Chats</div>
       <div id="liveChats" class="divide-y max-h-[70vh] overflow-y-auto"></div>
     </div>
+    <?php endif; ?>
     <div class="card">
       <div class="p-2 border-b text-[11px] font-semibold text-gray-600 uppercase tracking-wide"><i class="fa-solid fa-phone text-green-500"></i> Calls (24h)</div>
       <table class="dense"><tbody id="calls"></tbody></table>
@@ -58,39 +65,46 @@ sales_nav('conversations');
 
 <?php sales_scripts(); ?>
 <script>
+const HIDE_LIVE_CHAT = <?= $hideLiveChat ? 'true' : 'false' ?>;
 const mmss = s => { s=+s||0; const m=Math.floor(s/60), x=s%60; return m+':'+String(x).padStart(2,'0'); };
 let CALLS = [];
 async function load(){
   const { data:d } = await apiGet('conversations.php');
   const c = d.counts;
-  document.getElementById('convKpis').innerHTML = [
-    ['Chats active', c.chats_active, c.chats_active>0],['Chats waiting', c.chats_waiting, c.chats_waiting>0],
-    ['Chats missed', c.chats_missed, c.chats_missed>0],
-    ['Calls (24h)', c.calls_today],['WhatsApp (24h)', c.wa_today],
-  ].map(([l,v,warn])=>`<div><div class="kv ${warn?'text-red-600':''}">${v}</div><div class="kl">${l}</div></div>`).join('');
+  const kpis = HIDE_LIVE_CHAT
+    ? [['Calls (24h)', c.calls_today],['WhatsApp (24h)', c.wa_today]]
+    : [
+        ['Chats active', c.chats_active, c.chats_active>0],['Chats waiting', c.chats_waiting, c.chats_waiting>0],
+        ['Chats missed', c.chats_missed, c.chats_missed>0],
+        ['Calls (24h)', c.calls_today],['WhatsApp (24h)', c.wa_today],
+      ];
+  document.getElementById('convKpis').innerHTML = kpis
+    .map(([l,v,warn])=>`<div><div class="kv ${warn?'text-red-600':''}">${v}</div><div class="kl">${l}</div></div>`).join('');
 
-  document.getElementById('liveChats').innerHTML = d.live_chats.map(s=>{
-    const free = s.status==='waiting' || s.status==='missed' || !s.agent_id;
-    const attend = s.status==='missed'
-      ? '<span class="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5"><i class="fa-solid fa-clock text-[8px]"></i> Missed</span>'
-      : free
-      ? '<span class="text-[10px] font-semibold text-red-600 bg-red-50 border border-red-200 rounded px-1.5 py-0.5 animate-pulse"><i class="fa-solid fa-circle text-[7px]"></i> Currently free</span>'
-      : `<span class="text-[10px] font-semibold text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5"><i class="fa-solid fa-headset text-[8px]"></i> ${esc(s.agent)}</span>`;
-    const opts = (AGENTS||[]).map(a=>`<option value="${a.id}" ${a.id==s.agent_id?'selected':''}>${esc(a.full_name)}</option>`).join('');
-    return `<div class="p-2 ${s.status==='missed'?'bg-amber-50/40':free?'bg-red-50/40':''}">
-      <div class="flex items-center justify-between gap-2">
-        <span class="text-xs font-semibold truncate">${esc(s.visitor_name||'Visitor')}</span>
-        ${attend}
-      </div>
-      <div class="text-[11px] text-gray-500 truncate">${esc(s.last_msg||'')}</div>
-      <div class="flex items-center justify-between mt-1">
-        <span class="text-[10px] text-gray-400">${esc(s.visitor_phone||'')} · ${mmss(s.age_sec)} elapsed</span>
-        <select onchange="assignChat(${s.id}, this.value)" class="text-[10px] border rounded px-1 py-0.5 text-gray-600">
-          <option value="">${free?'Assign to…':'Reassign to…'}</option>${opts}
-        </select>
-      </div>
-    </div>`;
-  }).join('') || '<div class="p-3 text-center text-gray-400 text-xs">No live chats</div>';
+  if (!HIDE_LIVE_CHAT) {
+    document.getElementById('liveChats').innerHTML = d.live_chats.map(s=>{
+      const free = s.status==='waiting' || s.status==='missed' || !s.agent_id;
+      const attend = s.status==='missed'
+        ? '<span class="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5"><i class="fa-solid fa-clock text-[8px]"></i> Missed</span>'
+        : free
+        ? '<span class="text-[10px] font-semibold text-red-600 bg-red-50 border border-red-200 rounded px-1.5 py-0.5 animate-pulse"><i class="fa-solid fa-circle text-[7px]"></i> Currently free</span>'
+        : `<span class="text-[10px] font-semibold text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5"><i class="fa-solid fa-headset text-[8px]"></i> ${esc(s.agent)}</span>`;
+      const opts = (AGENTS||[]).map(a=>`<option value="${a.id}" ${a.id==s.agent_id?'selected':''}>${esc(a.full_name)}</option>`).join('');
+      return `<div class="p-2 ${s.status==='missed'?'bg-amber-50/40':free?'bg-red-50/40':''}">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-xs font-semibold truncate">${esc(s.visitor_name||'Visitor')}</span>
+          ${attend}
+        </div>
+        <div class="text-[11px] text-gray-500 truncate">${esc(s.last_msg||'')}</div>
+        <div class="flex items-center justify-between mt-1">
+          <span class="text-[10px] text-gray-400">${esc(s.visitor_phone||'')} · ${mmss(s.age_sec)} elapsed</span>
+          <select onchange="assignChat(${s.id}, this.value)" class="text-[10px] border rounded px-1 py-0.5 text-gray-600">
+            <option value="">${free?'Assign to…':'Reassign to…'}</option>${opts}
+          </select>
+        </div>
+      </div>`;
+    }).join('') || '<div class="p-3 text-center text-gray-400 text-xs">No live chats</div>';
+  }
 
   CALLS = d.calls;
   document.getElementById('calls').innerHTML = d.calls.map(cl=>{
@@ -107,7 +121,7 @@ async function load(){
   }).join('')
     || '<tr><td class="text-gray-400 text-center py-2 text-xs">No calls</td></tr>';
 
-  notifyNewFree(d.live_chats);
+  if (!HIDE_LIVE_CHAT) notifyNewFree(d.live_chats);
   waLoad();
 }
 
@@ -240,7 +254,14 @@ function notifyNewFree(chats){
   }
 }
 
-(async()=>{ await loadAgents(); await loadSettings(); document.getElementById('notifyOn').checked = localStorage.getItem('convNotify')==='1'; load(); })();
+(async()=>{
+  await loadAgents();
+  if (!HIDE_LIVE_CHAT) {
+    await loadSettings();
+    document.getElementById('notifyOn').checked = localStorage.getItem('convNotify')==='1';
+  }
+  load();
+})();
 setInterval(load, 4000);
 </script>
 </html>

@@ -121,7 +121,7 @@ let EMP = [], LEADS = [];
 
 /* ---- KPI strip ---- */
 async function loadMetrics() {
-  const { data: m } = await apiGet('leads.php', { metrics: 1 });
+  const { data: m } = await apiGet('leads.php', { metrics: 1, vertical: 'sales' });
   const f = m.funnel;
   let waUnread = 0;
   try {
@@ -163,20 +163,6 @@ function fmtNext(dt) {
   return d <= new Date() ? `<span class="text-red-600 font-semibold"><i class="fa-solid fa-bell"></i> ${esc(s)}</span>`
                          : `<span class="text-gray-600">${esc(s)}</span>`;
 }
-/* Live-chat icon reflects the lead's most recent chat session, whatever state it's in —
-   not just "is someone waiting right now" — so an agent can tell at a glance whether a
-   chat is still waiting, being handled, was missed, or is already closed. */
-const CHAT_STATUS_STYLE = {
-  waiting: { cls: 'text-red-600 hover:text-red-700 animate-pulse', dot: 'bg-red-500', title: 'Live chat waiting — click to join' },
-  active:  { cls: 'text-green-600 hover:text-green-700', dot: 'bg-green-500', title: 'Chat in progress — click to view' },
-  missed:  { cls: 'text-amber-500 hover:text-amber-600', dot: 'bg-amber-500', title: 'Chat was missed — click to view' },
-  closed:  { cls: 'text-gray-400 hover:text-gray-600', dot: 'bg-gray-400', title: 'Chat closed — click to view history' },
-};
-function liveChatIconHtml(l, extraCls) {
-  const s = CHAT_STATUS_STYLE[l.chat_status] || { cls: 'text-indigo-500 hover:text-indigo-700', dot: '', title: 'Live chat' };
-  const dot = s.dot ? `<span class="absolute -top-1 -right-1 w-2 h-2 ${s.dot} rounded-full"></span>` : '';
-  return `<button onclick="liveChatLead(${l.id})" title="${esc(s.title)}" class="relative ${extraCls||''} ${s.cls}"><i class="fa-solid fa-comments"></i>${dot}</button>`;
-}
 let dueOnly = false;
 function toggleDue() {
   dueOnly = !dueOnly;
@@ -188,7 +174,7 @@ function goPage(p, per) { if (per) perPage = +per; page = Math.max(1, p || 1); l
 let _searchT; function liveSearch() { clearTimeout(_searchT); _searchT = setTimeout(() => goPage(1), 300); }
 
 async function load() {
-  const params = { page, per: perPage, sort: sortCol, dir: sortDir };
+  const params = { page, per: perPage, sort: sortCol, dir: sortDir, vertical: 'sales' };
   if (q.value) params.q = q.value;
   if (fStatus.value) params.status = fStatus.value;
   if (fSource.value) params.source = fSource.value;
@@ -207,10 +193,11 @@ async function load() {
       <td class="text-gray-500">${esc(l.display_email || l.email || '')}${(l.phone||l.mobile)?`<br>
         <a href="tel:${(l.mobile||l.phone||'').replace(/[^0-9+]/g,'')}" class="text-indigo-600 hover:underline" title="Call from this device"><i class="fa-solid fa-phone text-[10px]"></i> ${esc(l.display_mobile || l.phone || l.mobile)}</a>
         <button onclick="callLead(${l.id})" title="Cloud call (provider bridges you & the customer)" class="text-blue-600 hover:text-blue-700 ml-1"><i class="fa-solid fa-headset text-[11px]"></i></button>
-        <button onclick="waLead(${l.id})" title="WhatsApp chat" class="text-green-600 hover:text-green-700 ml-1"><i class="fa-brands fa-whatsapp"></i></button>
-        ${liveChatIconHtml(l, 'ml-1')}`:''}</td>
+        <button onclick="waLead(${l.id})" title="WhatsApp chat" class="text-green-600 hover:text-green-700 ml-1"><i class="fa-brands fa-whatsapp"></i></button>`:''}</td>
       <td class="text-gray-600">${esc(l.ticket_subject || SUBJECT_LABEL[l.lead_source] || '—')}</td>
-      <td class="capitalize">${esc(l.lead_source)}</td>
+      <td class="capitalize">${esc(l.lead_source)}${isServiceHandoff(l) ? `
+        <button onclick="viewHandoff(${l.id})" title="View the notes the Service team sent with this lead"
+          class="ml-1 text-indigo-600 hover:text-indigo-800 align-middle"><i class="fa-solid fa-headset text-[10px]"></i><i class="fa-solid fa-note-sticky text-[10px] ml-0.5"></i></button>` : ''}</td>
       <td>${badge(l.lead_status, sc[l.lead_status]||'gray')}</td>
       <td>${l.score>0 ? badge(l.score, l.score>=70?'green':l.score>=40?'yellow':'gray') : '<span class="text-gray-300">—</span>'}</td>
       <td>${fmtNext(l.next_followup_at)}</td>
@@ -219,7 +206,6 @@ async function load() {
       <td class="rowact">
         <button onclick="followUp(${l.id})" title="Follow-up" class="text-indigo-600 hover:text-indigo-800"><i class="fa-solid fa-clipboard-check"></i></button>
         <button onclick="waLead(${l.id})" title="WhatsApp" class="text-green-600 hover:text-green-700"><i class="fa-brands fa-whatsapp"></i></button>
-        ${liveChatIconHtml(l)}
         <button onclick="scoreLead(${l.id})" title="AI score" class="text-purple-600 hover:text-purple-800"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
         <button onclick="editLead(${l.id})" title="Edit" class="text-gray-500 hover:text-gray-800"><i class="fa-solid fa-pen"></i></button>
         ${l.is_converted==1 ? '<i class="fa-solid fa-circle-check text-green-500" title="converted"></i>'
@@ -232,22 +218,22 @@ async function load() {
 /* ---- bulk actions ---- */
 async function bulkStatus() {
   const v = document.getElementById('bulkStatusVal').value; if (!v) return toast('Pick a status', false);
-  const r = await apiSend('leads.php?bulk=1', { ids: selIds(), action: 'status', value: v });
+  const r = await apiSend('leads.php?bulk=1&vertical=sales', { ids: selIds(), action: 'status', value: v });
   if (r.success) { toast(`${r.data.updated} updated`); selClear(); loadMetrics(); load(); }
 }
 async function bulkOwner() {
   const v = document.getElementById('bulkOwnerVal').value; if (!v) return toast('Pick an owner', false);
-  const r = await apiSend('leads.php?bulk=1', { ids: selIds(), action: 'owner', value: v });
+  const r = await apiSend('leads.php?bulk=1&vertical=sales', { ids: selIds(), action: 'owner', value: v });
   if (r.success) { toast(`${r.data.updated} reassigned`); selClear(); load(); }
 }
 async function bulkFollowupDate() {
   const v = document.getElementById('bulkDate').value; if (!v) return toast('Pick a date', false);
-  const r = await apiSend('leads.php?bulk=1', { ids: selIds(), action: 'followup_date', value: v + ' 10:00:00' });
+  const r = await apiSend('leads.php?bulk=1&vertical=sales', { ids: selIds(), action: 'followup_date', value: v + ' 10:00:00' });
   if (r.success) { toast(`${r.data.updated} scheduled`); selClear(); loadMetrics(); load(); }
 }
 async function bulkDelete() {
   if (!confirm(`Delete ${selIds().length} lead(s)?`)) return;
-  const r = await apiSend('leads.php?bulk=1', { ids: selIds(), action: 'delete' });
+  const r = await apiSend('leads.php?bulk=1&vertical=sales', { ids: selIds(), action: 'delete' });
   if (r.success) { toast(`${r.data.deleted} deleted`); selClear(); loadMetrics(); load(); }
 }
 
@@ -319,6 +305,36 @@ async function scoreLead(id) {
     <div class="bg-indigo-50 rounded p-2"><b class="text-indigo-700">Next best action:</b> ${esc(d.next_best_action||'')}</div>
   </div>`, 'AI Lead Score');
   load();
+}
+
+/* ---- service → sales handoff notes ----
+   A lead reaches Sales from the Service team either as a "generated lead" (source=service_referral,
+   captured off a call/live chat/WhatsApp) or as a transferred ticket. In both cases the notes the
+   Service exec wrote are stamped onto the linked ticket's last_update_note. Surface them here so
+   the Sales rep gets the same context Service had, one click away. */
+function isServiceHandoff(l) {
+  return (l.lead_source === 'service_referral' || l.ticket_source === 'service_lead' || !!l.handoff_by)
+      && (!!(l.handoff_note && String(l.handoff_note).trim()) || !!l.handoff_by);
+}
+function viewHandoff(id) {
+  const l = LEADS.find(x => +x.id === +id);
+  if (!l) return;
+  const note = (l.handoff_note && String(l.handoff_note).trim()) ? esc(l.handoff_note).replace(/\n/g, '<br>')
+             : '<span class="text-gray-400">No written note was added — see the request details.</span>';
+  const meta = [
+    l.handoff_by ? `Handed over by <b>${esc(l.handoff_by)}</b>` : '',
+    l.ticket_ref ? `Ref ${esc(l.ticket_ref)}` : '',
+    l.ticket_subject ? esc(l.ticket_subject) : '',
+  ].filter(Boolean).join(' &nbsp;·&nbsp; ');
+  openModal(`
+    <div class="space-y-2 text-xs">
+      <div class="flex items-center gap-2 text-indigo-700 font-semibold">
+        <i class="fa-solid fa-headset"></i> Notes from the Service team
+      </div>
+      ${meta ? `<div class="text-[11px] text-gray-500">${meta}</div>` : ''}
+      <div class="bg-amber-50 border border-amber-200 rounded p-3 text-gray-800 leading-relaxed whitespace-pre-wrap">${note}</div>
+      <div class="flex justify-end pt-1"><button type="button" onclick="closeModal()" class="px-3 py-1.5 border rounded">Close</button></div>
+    </div>`, 'Service Handoff Notes');
 }
 
 /* ---- edit ---- */
@@ -436,13 +452,6 @@ async function waLead(id) {
   const name = ((l.first_name || '') + ' ' + (l.last_name || '')).trim();
   window.location.href = 'sales-whatsapp.php?phone=' + encodeURIComponent(phone)
     + '&name=' + encodeURIComponent(name) + '&lead_id=' + id;
-}
-
-/* ---- Live Chat: start/reuse a chat session for this lead and open it under Conversations ---- */
-async function liveChatLead(id) {
-  const r = await apiSend('chat.php?action=start_from_lead', { lead_id: id });
-  if (!r.success) return toast(r.error || 'Could not start live chat', false);
-  window.location.href = 'sales-chat.php?open=' + r.data.session_id + '&tab=' + (r.data.status || 'active');
 }
 
 /* ---- init ---- */

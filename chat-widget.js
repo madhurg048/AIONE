@@ -295,20 +295,48 @@
             return { w, h, b, r };
         }
 
+        let lastSize = { w: 0, h: 0, b: 0, r: 0 };
+        let resizeRafId = null;
         function applyWidgetSize() {
             if (!widgetOpen) return;
             const { w, h, b, r } = calcWidgetSize();
+            // Skip no-op writes: the chat iframe has its own visualViewport listener
+            // reacting to the same events (e.g. an auto-growing textarea resizing on
+            // every keystroke). Writing here on every tick fed a resize feedback loop
+            // between parent and iframe that looked like flicker inside the widget.
+            if (Math.abs(w - lastSize.w) < 4 && Math.abs(h - lastSize.h) < 4 &&
+                Math.abs(b - lastSize.b) < 4 && Math.abs(r - lastSize.r) < 4) return;
+            lastSize = { w, h, b, r };
             widget.style.width = w + 'px';
             widget.style.height = h + 'px';
             widget.style.bottom = b + 'px';
             widget.style.right = r + 'px';
         }
 
-        window.addEventListener('resize', applyWidgetSize);
-        window.addEventListener('orientationchange', applyWidgetSize);
+        function scheduleApplyWidgetSize() {
+            if (resizeRafId) return;
+            resizeRafId = requestAnimationFrame(() => {
+                resizeRafId = null;
+                applyWidgetSize();
+            });
+        }
+
+        window.addEventListener('resize', scheduleApplyWidgetSize);
+        window.addEventListener('orientationchange', scheduleApplyWidgetSize);
         if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', applyWidgetSize);
-            window.visualViewport.addEventListener('scroll', applyWidgetSize);
+            window.visualViewport.addEventListener('resize', scheduleApplyWidgetSize);
+            window.visualViewport.addEventListener('scroll', scheduleApplyWidgetSize);
+        }
+
+        // Collapse the widget to 0x0 and reset the size cache so the next open
+        // always re-applies a real size (the no-op guard in applyWidgetSize()
+        // otherwise sees the size as "unchanged" and skips the write).
+        function collapseWidget() {
+            lastSize = { w: 0, h: 0, b: 0, r: 0 };
+            widget.style.width = '0';
+            widget.style.height = '0';
+            widget.style.opacity = '0';
+            widget.style.pointerEvents = 'none';
         }
 
         toggleBtn.addEventListener('click', () => {
@@ -322,20 +350,14 @@
                 document.getElementById('payg-chat-widget-btn').style.display = 'none';
             } else {
                 resetIframe();
-                widget.style.width = '0';
-                widget.style.height = '0';
-                widget.style.opacity = '0';
-                widget.style.pointerEvents = 'none';
+                collapseWidget();
                 // ? Show button again
                 document.getElementById('payg-chat-widget-btn').style.display = 'block';
             }
         });
         closeBtn.addEventListener('click', () => {
             resetIframe();
-            widget.style.width = '0';
-            widget.style.height = '0';
-            widget.style.opacity = '0';
-            widget.style.pointerEvents = 'none';
+            collapseWidget();
             document.getElementById('payg-chat-widget-btn').style.display = 'block';
             widgetOpen = false;
 
@@ -354,15 +376,23 @@
     // Listen for close message from chat iframe
     window.addEventListener('message', function (event) {
         if (event.data && event.data.type === 'payg-close-chat') {
-            const widget = document.getElementById('payg-chat-widget');
-            if (widget) {
-                widget.style.width = '0';
-                widget.style.height = '0';
-                widget.style.opacity = '0';
-                widget.style.pointerEvents = 'none';
+            // Route through the close button so the shared close logic runs
+            // (resets the size cache + widgetOpen flag; otherwise the widget
+            // cannot be reopened afterwards).
+            const closeBtn = document.getElementById('paygCloseBtn');
+            if (closeBtn) {
+                closeBtn.click();
+            } else {
+                const widget = document.getElementById('payg-chat-widget');
+                if (widget) {
+                    widget.style.width = '0';
+                    widget.style.height = '0';
+                    widget.style.opacity = '0';
+                    widget.style.pointerEvents = 'none';
+                }
+                const btn = document.getElementById('payg-chat-widget-btn');
+                if (btn) btn.style.display = 'block';
             }
-            const btn = document.getElementById('payg-chat-widget-btn');
-            if (btn) btn.style.display = 'block';
         }
 
         // Forward analytics events from chat iframe to parent page's GTM dataLayer

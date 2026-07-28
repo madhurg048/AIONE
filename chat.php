@@ -32,16 +32,32 @@
         // On desktop (no virtual keyboard resizing the viewport) this is a no-op:
         // --vh stays equal to 1% of window.innerHeight, same as plain 100vh.
         (function () {
+            var lastH = 0;
+            var rafId = null;
             function setAppHeight() {
                 var h = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+                // Skip no-op writes: without this, the tiny height jitter from an
+                // auto-growing textarea (resizes on every keystroke) keeps re-firing
+                // visualViewport 'resize'/'scroll' here AND in the parent widget's own
+                // listener on the same viewport, and each write re-triggers the other
+                // — a feedback loop that reads as flicker and speeds up while typing.
+                if (Math.abs(h - lastH) < 2) return;
+                lastH = h;
                 document.documentElement.style.setProperty('--vh', (h * 0.01) + 'px');
             }
+            function scheduleSetAppHeight() {
+                if (rafId) return;
+                rafId = requestAnimationFrame(function () {
+                    rafId = null;
+                    setAppHeight();
+                });
+            }
             setAppHeight();
-            window.addEventListener('resize', setAppHeight);
-            window.addEventListener('orientationchange', setAppHeight);
+            window.addEventListener('resize', scheduleSetAppHeight);
+            window.addEventListener('orientationchange', scheduleSetAppHeight);
             if (window.visualViewport) {
-                window.visualViewport.addEventListener('resize', setAppHeight);
-                window.visualViewport.addEventListener('scroll', setAppHeight);
+                window.visualViewport.addEventListener('resize', scheduleSetAppHeight);
+                window.visualViewport.addEventListener('scroll', scheduleSetAppHeight);
             }
 
             // When a chat input/textarea gets focus (keyboard opens), scroll it
@@ -902,7 +918,13 @@
                     style="font-size:10px; color:#2563eb; background:none; border:none; cursor:pointer; padding:0;">
                     Resend OTP
                 </button>
-                <span style="font-size:10px; color:#6b7280;">${chatState.formData.mobile}</span>
+                <span style="font-size:10px; color:#6b7280; display:flex; align-items:center; gap:8px;">
+                    ${chatState.formData.mobile}
+                    <button onclick="editMobileNumber()"
+                        style="font-size:10px; color:#dc2626; background:none; border:none; cursor:pointer; padding:0; text-decoration:underline;">
+                        Change number
+                    </button>
+                </span>
             </div>
         </div>`;
 
@@ -915,8 +937,12 @@
         }
 
         function editMobileNumber() {
+            clearMobileOtpTimer();
             chatState.otpData.mobileVerified = false;
+            chatState.otpData.mobileOtpId = null;
+            chatState.otpData.mobileSentAt = null;
             chatState.formData.mobile = '';
+            saveChatSession();
             showMobileInput();
         }
 
