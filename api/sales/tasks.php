@@ -9,6 +9,7 @@
  *   PATCH tasks.php?id=5                  -> update status/fields
  */
 require_once __DIR__ . '/_bootstrap.php';
+require_once __DIR__ . '/_escalation_engine.php';
 require_login();
 $db = db();
 $me = current_employee_id();
@@ -64,6 +65,8 @@ if (method() === 'POST') {
                   $kpaGoalId, $hoursSpent,
                   $b['priority'] ?? 'medium', $b['due_at'] ?? null]);
     $id = (int)$db->lastInsertId();
+    // stamp the SLA/TAT clock (non-fatal — a missing policy just means no SLA)
+    try { sla_stamp_task($db, $id); } catch (Throwable $e) {}
     // notify the assignee (uses the existing notifications table)
     try {
         $db->prepare("INSERT INTO notifications (user_id,type,title,message,link)
@@ -93,6 +96,10 @@ if (method() === 'PATCH' || method() === 'PUT') {
         $args[] = ($b['kpa_goal_id'] !== null && $b['kpa_goal_id'] !== '' && (int)$b['kpa_goal_id'] > 0) ? (int)$b['kpa_goal_id'] : null;
     }
     if (isset($b['status']) && $b['status'] === 'done') $set[] = "completed_at=NOW()";
+    // finishing the task closes any open escalations riding on it
+    if (isset($b['status']) && in_array($b['status'], ['done','cancelled'], true)) {
+        try { $db->prepare("UPDATE task_escalations SET status='resolved', resolved_at=NOW() WHERE task_id=? AND status='open'")->execute([$id]); } catch (Throwable $e) {}
+    }
     if (!$set) fail('Nothing to update');
     $args[] = $id;
     // allow the assignee OR the assigner to update

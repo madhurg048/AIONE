@@ -165,6 +165,9 @@ function sales_page_title(): string
         'sales-kpa.php' => 'KPA / KRA',
         'sales-users.php' => 'User Management', 'sales-integrations.php' => 'Integrations',
         'sales-org.php' => 'Org & Roles',
+        'sales-escalations.php' => 'Escalations & SLA', 'sales-settlements.php' => 'Merchant Settlements',
+        'sales-compliance.php' => 'Compliance & Certifications', 'sales-groups.php' => 'Employee Groups',
+        'sales-documents.php' => 'Documents',
     ];
     return $t[basename($_SERVER['SCRIPT_NAME'] ?? '')] ?? 'Sales';
 }
@@ -258,6 +261,28 @@ function sales_allowed_modules(): array
         $s = $db->prepare("SELECT module_key FROM role_access WHERE role=? AND can_access=1");
         $s->execute([sales_role()]);
         $cache = $s->fetchAll(PDO::FETCH_COLUMN);
+        // Group grants are additive: membership of an active group that carries a
+        // module (e.g. "Compliance Team" -> compliance) unions into the role's set.
+        // Only when the role IS restricted — an empty set already means "allow all".
+        //
+        // Its OWN try/catch on purpose: an empty $cache means "allow all modules"
+        // (see the docblock above), so letting a failure here reach the outer catch
+        // would silently disable RBAC app-wide — that is exactly what happens if the
+        // phase50 emp_group_* tables have not been migrated yet. A missing/broken
+        // group table must only skip the union, never widen the role's set.
+        if ($cache) {
+            try {
+                $empId = (int)($_SESSION['user']['data']['employee']['id'] ?? ($_SESSION['user']['data']['id'] ?? 0));
+                if ($empId) {
+                    $g = $db->prepare("SELECT DISTINCT a.module_key FROM emp_group_access a
+                                         JOIN emp_group_members m ON m.group_id=a.group_id
+                                         JOIN emp_groups gr ON gr.id=a.group_id
+                                        WHERE m.employee_id=? AND a.can_access=1 AND gr.is_active=1");
+                    $g->execute([$empId]);
+                    $cache = array_values(array_unique(array_merge($cache, $g->fetchAll(PDO::FETCH_COLUMN))));
+                }
+            } catch (Throwable $e) { /* keep the role's own set — never widen it */ }
+        }
     } catch (Throwable $e) { $cache = []; }
     return $cache;
 }
@@ -297,13 +322,18 @@ function sales_catalog(): array
         'org'        => ['Org & Roles', 'fa-sitemap',         'sales-org.php'],
         'users'      => ['Users',       'fa-users-gear',      'sales-users.php'],
         'integrations'=>['Integrations','fa-plug',            'sales-integrations.php'],
+        'escalations'=> ['Escalations', 'fa-arrow-trend-up',  'sales-escalations.php'],
+        'settlements'=> ['Settlements', 'fa-file-invoice-dollar', 'sales-settlements.php'],
+        'compliance' => ['Compliance',  'fa-shield-halved',   'sales-compliance.php'],
+        'groups'     => ['Groups',      'fa-people-group',    'sales-groups.php'],
+        'documents'  => ['Documents',   'fa-folder-open',     'sales-documents.php'],
     ];
 }
 
 /** Grouped nav layout: [k] single link, or [label, icon, [keys...]] dropdown. */
 function sales_groups(): array
 {
-    $deptModules = ['leads', 'pipeline', 'merchants', 'transactions', 'incentives', 'reimbursements', 'scorecards', 'reports'];
+    $deptModules = ['leads', 'pipeline', 'merchants', 'transactions', 'settlements', 'incentives', 'reimbursements', 'scorecards', 'reports'];
     // Sales has no equivalent tab — 'genleads' only ever lists leads Service itself captured.
     $serviceModules = array_merge($deptModules, ['genleads']);
 
@@ -321,6 +351,8 @@ function sales_groups(): array
             ['Service', 'fa-headset',   array_merge(['dashboard'], $serviceModules), 'service'],
             ['Conversations',  'fa-comments',    ['chat', 'whatsapp', 'inbox', 'conversations', 'calls', 'tickets']],
             ['timesheet'],
+            ['documents'],
+            ['Governance',     'fa-shield-halved', ['escalations', 'compliance', 'groups']],
             ['Admin',          'fa-user-shield', ['admin', 'org', 'users', 'settings', 'kpa', 'automation', 'integrations']],
         ];
     }
@@ -332,8 +364,10 @@ function sales_groups(): array
     if (payg_is_hr_role(sales_role())) {
         return [
             ['hr'],
-            ['People',      'fa-users-gear', ['users', 'org']],
+            ['People',      'fa-users-gear', ['users', 'org', 'groups']],
             ['Performance', 'fa-bullseye',   ['kpa', 'scorecards', 'reports']],
+            ['Governance',  'fa-shield-halved', ['escalations', 'compliance']],
+            ['documents'],
             ['timesheet'],
             ['activity'],
         ];
@@ -348,7 +382,9 @@ function sales_groups(): array
         [sales_vertical_label(), 'fa-briefcase',   $isServiceDept ? $serviceModules : $deptModules],
         ['Conversations',  'fa-comments',    ['chat', 'whatsapp', 'inbox', 'conversations', 'calls', 'tickets']],
         ['timesheet'],
-        ['Admin',          'fa-user-shield', ['admin', 'org', 'users', 'settings', 'kpa', 'automation', 'integrations']],
+        ['documents'],
+        ['Governance',     'fa-shield-halved', ['escalations', 'compliance']],
+        ['Admin',          'fa-user-shield', ['admin', 'org', 'users', 'settings', 'kpa', 'automation', 'integrations', 'groups']],
     ];
 }
 

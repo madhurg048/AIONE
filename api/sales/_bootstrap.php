@@ -298,8 +298,27 @@ function require_module(string $moduleKey): void
         if ($any === 0) return;   // unconfigured role -> allow (matches nav behaviour)
         $s = $db->prepare("SELECT can_access FROM role_access WHERE role=? AND module_key=?");
         $s->execute([$role, $moduleKey]);
-        if ((int)$s->fetchColumn() !== 1) fail('Your role does not have access to this module', 403);
+        if ((int)$s->fetchColumn() === 1) return;
+        // Group grants are ADDITIVE on top of role RBAC: membership of an active
+        // group that carries this module (e.g. "Compliance Team") is enough.
+        if (employee_group_module_allowed($moduleKey)) return;
+        fail('Your role does not have access to this module', 403);
     } catch (Throwable $e) { /* fail open on RBAC infrastructure error */ }
+}
+
+/** True when one of the current employee's active groups grants $moduleKey. */
+function employee_group_module_allowed(string $moduleKey): bool
+{
+    $me = current_employee_id();
+    if (!$me) return false;
+    try {
+        $s = db()->prepare("SELECT COUNT(*) FROM emp_group_access a
+                              JOIN emp_group_members m ON m.group_id=a.group_id
+                              JOIN emp_groups g ON g.id=a.group_id
+                             WHERE m.employee_id=? AND a.module_key=? AND a.can_access=1 AND g.is_active=1");
+        $s->execute([$me, $moduleKey]);
+        return (int)$s->fetchColumn() > 0;
+    } catch (Throwable $e) { return false; }
 }
 
 /** Parsed JSON body for POST/PATCH. Falls back to $_POST. */

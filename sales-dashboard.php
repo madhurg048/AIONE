@@ -20,6 +20,36 @@ sales_nav('dashboard');
   <!-- system-wide KPI strip -->
   <div id="kpis" class="kstrip"></div>
 
+  <!-- ===== Governance: SLA misses, high TAT, escalations, approvals, compliance (admin/managers) ===== -->
+  <?php if (payg_role_can(sales_role(), 'records_all') || sales_role() === 'admin'): ?>
+  <div id="govPanel" class="hidden space-y-2">
+    <div id="govKpis" class="kstrip"></div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-2">
+      <div class="card">
+        <div class="p-2 border-b flex items-center justify-between">
+          <span class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide"><i class="fa-solid fa-user-clock text-red-500"></i> SLA not met — by employee</span>
+          <a href="sales-escalations.php" class="text-[11px] text-indigo-600 hover:underline">Escalations →</a>
+        </div>
+        <table class="dense"><thead><tr><th>Employee</th><th class="text-right">Breached</th><th class="text-right">Worst overdue</th></tr></thead>
+        <tbody id="govSlaMissed"></tbody></table>
+      </div>
+      <div class="card">
+        <div class="p-2 border-b text-[11px] font-semibold text-gray-600 uppercase tracking-wide"><i class="fa-solid fa-gauge-simple-high text-amber-500"></i> High TAT — by task type</div>
+        <table class="dense"><thead><tr><th>Type</th><th class="text-right">Open</th><th class="text-right">Avg age</th><th class="text-right">Breached</th></tr></thead>
+        <tbody id="govHighTat"></tbody></table>
+      </div>
+      <div class="card">
+        <div class="p-2 border-b flex items-center justify-between">
+          <span class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide"><i class="fa-solid fa-shield-halved text-indigo-500"></i> Compliance — renewals next 6 months</span>
+          <a href="sales-compliance.php" class="text-[11px] text-indigo-600 hover:underline">Registry →</a>
+        </div>
+        <table class="dense"><thead><tr><th>Item</th><th>Owner</th><th class="text-right">Due</th></tr></thead>
+        <tbody id="govUpcoming"></tbody></table>
+      </div>
+    </div>
+  </div>
+  <?php endif; ?>
+
   <!-- ===== end-to-end conversion flow: Lead → Conversion → Merchant ===== -->
   <div class="card p-3">
     <div class="flex items-center justify-between mb-2">
@@ -72,6 +102,45 @@ sales_nav('dashboard');
 <script src="js/dashboard-kpis.js"></script>
 <script>
 const IND='#6366f1', GRN='#10b981';
+
+/* ===== Governance panel (admin/managers — panel div absent for others) ===== */
+async function loadGovernance(){
+  const panel = document.getElementById('govPanel');
+  if (!panel) return;
+  try {
+    const { data:g } = await apiGet('governance-stats.php', {});
+    const s=g.sla||{}, e=g.escalations||{}, st=g.settlements||{}, c=g.compliance||{};
+    document.getElementById('govKpis').innerHTML = [
+      ['SLA breached (open)', s.breached_open||0, (s.breached_open||0)>0],
+      ['At risk < 4h', s.at_risk_4h||0, (s.at_risk_4h||0)>0],
+      ['Escalations open', e.open_now||0, (e.open_now||0)>0],
+      ['At L2+ (near admin)', e.at_level2_plus||0, (e.at_level2_plus||0)>0],
+      ['Settlements to check/approve', (+(st.to_check||0)) + (+(st.to_approve||0))],
+      ['Payouts to release', st.to_pay||0],
+      ['Policies & certs', c.total||0],
+      ['Renewals in 6 months', c.renewals_6m||0, (c.renewals_30d||0)>0],
+      ['EXPIRED', c.expired||0, (c.expired||0)>0],
+    ].map(([l,v,warn])=>`<div><div class="kv ${warn?'text-red-600':''}">${v}</div><div class="kl">${l}</div></div>`).join('');
+    document.getElementById('govSlaMissed').innerHTML = (g.sla_missed||[]).map(r=>`
+      <tr><td class="font-medium">${esc(r.full_name||('#'+r.assigned_to))}<div class="text-[10px] text-gray-400">${esc(r.designation||'')}</div></td>
+      <td class="text-right font-semibold text-red-600">${r.breached}</td>
+      <td class="text-right">${r.worst_overdue_h} h</td></tr>`).join('')
+      || '<tr><td colspan="3" class="text-gray-400 text-center py-2">Everyone within SLA 🎉</td></tr>';
+    document.getElementById('govHighTat').innerHTML = (g.high_tat||[]).map(r=>`
+      <tr><td>${badge(r.task_type,'gray')}</td><td class="text-right">${r.open_cnt}</td>
+      <td class="text-right ${(+r.avg_age_h)>48?'text-red-600 font-semibold':''}">${r.avg_age_h} h</td>
+      <td class="text-right ${(+r.breached)>0?'text-red-600':''}">${r.breached}</td></tr>`).join('')
+      || '<tr><td colspan="4" class="text-gray-400 text-center py-2">—</td></tr>';
+    document.getElementById('govUpcoming').innerHTML = (g.upcoming||[]).map(r=>`
+      <tr><td class="font-medium max-w-[150px] truncate" title="${esc(r.title)}">${esc(r.title)}
+        <div class="text-[10px] text-gray-400">${esc(r.item_type)} · ${esc(r.category||'')}</div></td>
+      <td class="text-[10px]">${esc(r.owner_group_name||r.owner_name||'—')}</td>
+      <td class="text-right ${r.days_left<0?'text-red-600 font-bold':r.days_left<30?'text-amber-600 font-semibold':''}">${r.days_left<0?Math.abs(r.days_left)+'d overdue':r.days_left+'d'}</td></tr>`).join('')
+      || '<tr><td colspan="3" class="text-gray-400 text-center py-2">Nothing due in 6 months</td></tr>';
+    panel.classList.remove('hidden');
+  } catch(err){ /* keep hidden */ }
+}
+loadGovernance();
 const PHASE_COLOR = { lead:'indigo', conversion:'amber', merchant:'green' };
 
 async function loadFlow() {
