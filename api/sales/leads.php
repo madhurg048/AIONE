@@ -283,6 +283,7 @@ if (method() === 'GET') {
                    ct.last_update_note AS handoff_note, ct.transferred_by_name AS handoff_by,
                    ct.source AS ticket_source,
                    COALESCE(ct.subject, NULL) AS ticket_subject,
+                   ct.assist_type AS ticket_assist_type,
                    COALESCE(ct.assigned_to_name, e.full_name) AS owner_name,
                    COALESCE(ct.created_at, l.created_at) AS display_created_at,
                    COALESCE(NULLIF(ct.customer_name,''),
