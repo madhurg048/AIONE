@@ -109,15 +109,12 @@ async function loadGovernance(){
   if (!panel) return;
   try {
     const { data:g } = await apiGet('governance-stats.php', {});
-    const s=g.sla||{}, e=g.escalations||{}, st=g.settlements||{}, c=g.compliance||{};
+    const s=g.sla||{}, e=g.escalations||{}, c=g.compliance||{};
     document.getElementById('govKpis').innerHTML = [
       ['SLA breached (open)', s.breached_open||0, (s.breached_open||0)>0],
       ['At risk < 4h', s.at_risk_4h||0, (s.at_risk_4h||0)>0],
       ['Escalations open', e.open_now||0, (e.open_now||0)>0],
-      ['One hop from admin', e.near_admin||0, (e.near_admin||0)>0],
-      ['With admin now', e.at_admin||0, (e.at_admin||0)>0],
-      ['Settlements to check/approve', (+(st.to_check||0)) + (+(st.to_approve||0))],
-      ['Payouts to release', st.to_pay||0],
+      ['At L2+ (near admin)', e.at_level2_plus||0, (e.at_level2_plus||0)>0],
       ['Policies & certs', c.total||0],
       ['Renewals in 6 months', c.renewals_6m||0, (c.renewals_30d||0)>0],
       ['EXPIRED', c.expired||0, (c.expired||0)>0],

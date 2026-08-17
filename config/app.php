@@ -1,43 +1,6 @@
 <?php
 
-/**
- * Loads KEY=VALUE pairs from a .env file in the project root into the environment.
- * Real environment variables (Azure App Service → Application Settings) always win, so
- * this is only a convenience for servers/dev boxes that have no env plumbing.
- */
-if (!function_exists('payg_load_env')) {
-    function payg_load_env(?string $file = null): void
-    {
-        static $loaded = false;
-        if ($loaded) return;
-        $loaded = true;
-
-        $file = $file ?: dirname(__DIR__) . '/.env';
-        if (!is_readable($file)) return;
-
-        foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-            $line = trim($line);
-            if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) continue;
-
-            [$key, $value] = explode('=', $line, 2);
-            $key   = trim($key);
-            $value = trim($value);
-            if ($key === '') continue;
-
-            // strip one layer of surrounding quotes, if present
-            $len = strlen($value);
-            if ($len >= 2 && (($value[0] === '"' && $value[$len - 1] === '"') || ($value[0] === "'" && $value[$len - 1] === "'"))) {
-                $value = substr($value, 1, -1);
-            }
-
-            // never clobber a real environment variable
-            if (getenv($key) !== false) continue;
-            putenv($key . '=' . $value);
-            $_ENV[$key] = $value;
-        }
-    }
-}
-payg_load_env();
+require_once __DIR__ . '/env.php';
 
 if (!function_exists('env_flag')) {
     function env_flag(string $name, bool $default = false): bool
@@ -143,8 +106,10 @@ if (!function_exists('payg_verify_csrf_request')) {
 if (!function_exists('payg_sample_login_enabled')) {
     function payg_sample_login_enabled(): bool
     {
-        // DEFAULT IS OFF so production is safe even where .htaccess is ignored (nginx / Azure
-        // App Service). Dev boxes opt in with PAYG_ENABLE_SAMPLE_LOGIN=true.
+        // SECURE BY DEFAULT: off unless PAYG_ENABLE_SAMPLE_LOGIN is explicitly turned on.
+        // It used to default ON and rely on .htaccess `SetEnv ... false` to switch it off —
+        // that silently stopped working on Nginx/IIS (no mod_env), exposing admin/admin123
+        // on the login page. Local dev sets PAYG_ENABLE_SAMPLE_LOGIN=true in .env instead.
         return env_flag('PAYG_ENABLE_SAMPLE_LOGIN', false);
     }
 }

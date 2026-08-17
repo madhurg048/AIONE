@@ -11,6 +11,7 @@
 require_once __DIR__ . '/_bootstrap.php';
 require_once __DIR__ . '/_automation_engine.php';
 require_login();
+require_module('pipeline');
 $db = db();
 if (method() !== 'POST') fail('POST required', 405);
 

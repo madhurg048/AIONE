@@ -1,7 +1,7 @@
 <?php
 /**
  * OTP send/verify for the public chatbot widget (public/chatbot/chat.php).
- * Thin proxy to PayG's own verification API (devapi.payg.in) — there is no
+ * Thin proxy to PayG's own verification API (PAYG_OTP_BASE) — there is no
  * local OTP secret here, this endpoint just relays to/from that service and
  * tracks per-mobile rate limiting + per-email OTP id in the PHP session.
  *

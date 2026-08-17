@@ -1,5 +1,10 @@
 <?php
 require_once __DIR__ . '/includes/sales-layout.php';
+// DISABLED 2026-08-06 — merchant settlements removed from the product for every
+// user. Anyone reaching this URL (bookmark, old link) goes to their home screen.
+// See api/sales/settlements.php for how to switch the module back on.
+header('Location: ' . sales_home());
+exit;
 $me = sales_guard();
 sales_head('Merchant Settlements');
 sales_header($me, 'Merchant Settlements');

@@ -173,21 +173,6 @@ function liveChatIconHtml(l, extraCls) {
   const dot = s.dot ? `<span class="absolute -top-1 -right-1 w-2 h-2 ${s.dot} rounded-full"></span>` : '';
   return `<button onclick="liveChatLead(${l.id})" title="${esc(s.title)}" class="relative ${extraCls||''} ${s.cls}"><i class="fa-solid fa-comments"></i>${dot}</button>`;
 }
-/* Callback requests are ticket-only by design — chatbot-ticket.php never opens a chat session for
-   assist_type='callback'. This list is one row per ticket, so ticket_assist_type identifies the
-   row precisely even when the lead also has service/transaction tickets of its own; those rows
-   keep their chat icon. Clicking chat on a callback row would only START a chat the customer
-   never asked for and drop it into the Live Chats queue, so the row gets the customer-info
-   button instead — matching the Requests page. */
-const isCallbackRow = l => l.ticket_assist_type === 'callback';
-function chatOrInfoIconHtml(l, extraCls) {
-  return isCallbackRow(l)
-    // Keyed on ticket_id, not lead id: this list fans out one row per ticket, so a lead with
-    // several tickets has several rows sharing the same l.id — looking the row back up by lead
-    // id alone would open the wrong ticket's details.
-    ? `<button onclick="showCustomerInfo(${l.ticket_id||0}, ${l.id})" title="Customer info" class="text-blue-600 hover:text-blue-700 ${extraCls||''}"><i class="fa-solid fa-circle-info"></i></button>`
-    : liveChatIconHtml(l, extraCls);
-}
 let dueOnly = false;
 function toggleDue() {
   dueOnly = !dueOnly;
@@ -219,7 +204,7 @@ async function load() {
         <a href="tel:${(l.mobile||l.phone||'').replace(/[^0-9+]/g,'')}" class="text-indigo-600 hover:underline" title="Call from this device"><i class="fa-solid fa-phone text-[10px]"></i> ${esc(l.phone||l.mobile)}</a>
         <button onclick="callLead(${l.id})" title="Cloud call (provider bridges you & the customer)" class="text-blue-600 hover:text-blue-700 ml-1"><i class="fa-solid fa-headset text-[11px]"></i></button>
         <button onclick="waLead(${l.id})" title="WhatsApp chat" class="text-green-600 hover:text-green-700 ml-1"><i class="fa-brands fa-whatsapp"></i></button>
-        ${chatOrInfoIconHtml(l, 'ml-1')}`:''}</td>
+        ${liveChatIconHtml(l, 'ml-1')}`:''}</td>
       <td class="text-gray-600">${esc(l.ticket_subject || SUBJECT_LABEL[l.lead_source] || '—')}</td>
       <td class="capitalize">${esc(l.lead_source)}</td>
       <td>${badge(l.lead_status, sc[l.lead_status]||'gray')}</td>
@@ -230,7 +215,7 @@ async function load() {
       <td class="rowact">
         <button onclick="followUp(${l.id})" title="Follow-up" class="text-indigo-600 hover:text-indigo-800"><i class="fa-solid fa-clipboard-check"></i></button>
         <button onclick="waLead(${l.id})" title="WhatsApp" class="text-green-600 hover:text-green-700"><i class="fa-brands fa-whatsapp"></i></button>
-        ${isCallbackRow(l) ? '' : liveChatIconHtml(l)}
+        ${liveChatIconHtml(l)}
         <button onclick="scoreLead(${l.id})" title="AI score" class="text-purple-600 hover:text-purple-800"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
         <button onclick="editLead(${l.id})" title="Edit" class="text-gray-500 hover:text-gray-800"><i class="fa-solid fa-pen"></i></button>
         ${l.is_converted==1 ? '<i class="fa-solid fa-circle-check text-green-500" title="converted"></i>'
@@ -455,61 +440,6 @@ async function liveChatLead(id) {
   const r = await apiSend('chat.php?action=start_from_lead', { lead_id: id });
   if (!r.success) return toast(r.error || 'Could not start live chat', false);
   window.location.href = 'sales-chat.php?open=' + r.data.session_id + '&tab=' + (r.data.status || 'active');
-}
-
-/* ---- Customer info (callback rows) — same panel the Requests page shows, built from the row
-   already in hand so it needs no extra round-trip. ---- */
-function infoRow(label, value) {
-  if (value === null || value === undefined || value === '') return '';
-  return `<div class="grid grid-cols-3 gap-2 py-1 border-b border-gray-100">
-    <div class="text-gray-400">${esc(label)}</div>
-    <div class="col-span-2 font-medium text-gray-800 break-words">${esc(String(value))}</div>
-  </div>`;
-}
-/* The customer types their message once but it is stored twice — chatbot-ticket.php writes it to
-   BOTH crm_tickets.last_update_note and leads.description, and appends another copy to the lead on
-   every repeat request inside the 6h reuse window. Splitting on blank lines and dropping repeats
-   (case/whitespace-insensitive) is what stops the same paragraph echoing two or more times. */
-function dedupeBlocks(sources) {
-  const seen = new Set(), out = [];
-  sources.filter(Boolean).forEach(src => String(src).split(/\n\s*\n/).forEach(block => {
-    const b = block.trim();
-    if (!b) return;
-    const key = b.toLowerCase().replace(/\s+/g, ' ');
-    if (seen.has(key)) return;
-    seen.add(key); out.push(b);
-  }));
-  return out.join('\n\n');
-}
-function showCustomerInfo(ticketId, leadId) {
-  const l = (ticketId && LEADS.find(x => +x.ticket_id === +ticketId)) || LEADS.find(x => +x.id === +leadId);
-  if (!l) return;
-  const mobile = l.display_mobile || l.mobile || l.phone || '';
-  const altMobile = l.phone && l.phone !== mobile ? l.phone : '';
-  const when = String(l.display_created_at || l.created_at || '').slice(0, 16).replace('T', ' ');
-  openModal(`
-    <div class="text-xs">
-      ${infoRow('Customer Name', l.display_name || ((l.first_name||'') + ' ' + (l.last_name||'')).trim())}
-      ${infoRow('Mobile Number', mobile)}
-      ${infoRow('Alternate Mobile Number', altMobile)}
-      ${infoRow('Email Address', l.display_email || l.email)}
-      ${infoRow('Customer ID', 'LEAD-' + l.id)}
-      ${infoRow('Address', l.address)}
-      ${infoRow('City', l.city)}
-      ${infoRow('State', l.state)}
-      ${infoRow('Pincode', l.pincode)}
-      ${infoRow('Request ID', l.ticket_ref)}
-      ${infoRow('Callback Request Date & Time', when)}
-      ${infoRow('Request Status', l.ticket_status || l.lead_status)}
-      ${infoRow('Assigned Agent', l.owner_name || 'Unassigned')}
-      ${infoRow('Lead Source', l.lead_source)}
-      ${infoRow('Created Date', when)}
-      ${infoRow('Last Updated Date', String(l.updated_at||'').slice(0,16).replace('T',' '))}
-      <div class="pt-2">
-        <div class="text-gray-400 mb-1">Complete Customer Enquiry / Message</div>
-        <div class="font-medium text-gray-800 whitespace-pre-wrap bg-gray-50 rounded p-2">${esc(dedupeBlocks([l.ticket_subject, l.handoff_note, l.description]) || '—')}</div>
-      </div>
-    </div>`, `Customer Info — ${esc(l.ticket_ref || 'request')}`);
 }
 
 /* ---- init ---- */

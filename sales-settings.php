@@ -100,6 +100,36 @@ $__kpaMgrPlus = $__kpaRole === 'admin' || $__kpaRole === 'manager' || $__kpaRole
     <p class="text-[10px] text-gray-400 mt-1">POP/IMAP are receiving protocols — outgoing notifications send via the SMTP host above. For Microsoft 365/Exchange, sign in with your AD login (user@domain) — host <code>smtp.office365.com:587</code>, STARTTLS.</p>
   </div>
 
+  <!-- AUTO-EMAIL ALERTS (timesheet / SLA / targets, manager looped in) -->
+  <div class="card p-3" id="alertCard">
+    <div class="flex items-center justify-between mb-1">
+      <h3 class="text-[12px] font-semibold text-gray-700 uppercase tracking-wide"><i class="fa-solid fa-bell text-indigo-500"></i> Auto-email Alerts</h3>
+      <span class="flex items-center gap-3">
+        <span id="alSmtp" class="text-[10px]"></span>
+        <label class="flex items-center gap-1.5 text-xs text-gray-600"><input type="checkbox" id="alEnabled" class="chk"> Enabled</label>
+      </span>
+    </div>
+    <p class="text-xs text-gray-500 mb-2">Automatic emails when a <b>timesheet isn't filled</b>, an <b>SLA/TAT is breached</b> (every escalation hop, incl. Board), or a <b>sales target</b> runs below threshold — each one also <b>loops the person's manager in</b>. Uses the SMTP account configured above.</p>
+    <div class="flex flex-wrap items-center gap-4 text-xs">
+      <label class="flex items-center gap-1.5"><input type="checkbox" id="alCcMgr" class="chk"> Loop manager on every alert</label>
+      <label class="flex items-center gap-1.5"><input type="checkbox" id="alTs" class="chk"> Timesheet not filled (daily)</label>
+      <label class="flex items-center gap-1.5"><input type="checkbox" id="alSla" class="chk"> SLA / TAT breaches (per escalation)</label>
+      <label class="flex items-center gap-1.5"><input type="checkbox" id="alTgt" class="chk"> Sales target below</label>
+      <label class="flex items-center gap-1">threshold <input id="alTh" type="number" min="1" max="100" class="ctl w-16"> %</label>
+    </div>
+    <div class="flex flex-wrap items-center gap-2 mt-3">
+      <button onclick="saveAlerts()" class="btn-p"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+      <button onclick="runAlertsNow()" class="ctl hover:bg-gray-50"><i class="fa-solid fa-play"></i> Run daily sweep now</button>
+      <span class="text-[10px] text-gray-400">cron: <code>0 17 * * * php cron/run-daily-alerts.php</code> · SLA emails fire from the escalation sweep automatically</span>
+    </div>
+    <div class="mt-2">
+      <div class="text-[10px] uppercase text-gray-400 mb-1">Recent alert emails</div>
+      <div class="overflow-x-auto max-h-40 overflow-y-auto"><table class="dense"><thead><tr>
+        <th>When</th><th>Type</th><th>Person</th><th>To</th><th>Manager copy</th><th>Status</th>
+      </tr></thead><tbody id="alLog"></tbody></table></div>
+    </div>
+  </div>
+
   <!-- MAILBOXES TO READ (AI INBOX) -->
   <div class="card p-3">
     <h3 class="text-[12px] font-semibold text-gray-700 uppercase tracking-wide mb-1"><i class="fa-solid fa-inbox text-indigo-500"></i> Mailboxes to Read (AI Inbox) <button type="button" onclick="showHelp('mailbox')" class="ml-2 text-[10px] normal-case font-normal text-indigo-500 hover:text-indigo-700" title="How to get these details"><i class="fa-regular fa-circle-question"></i> Need keys?</button></h3>
@@ -203,24 +233,6 @@ $__kpaMgrPlus = $__kpaRole === 'admin' || $__kpaRole === 'manager' || $__kpaRole
     </div>
   </div>
 
-  <!-- CALL TRANSCRIPTION -->
-  <div class="card p-3">
-    <div class="flex items-center justify-between mb-1">
-      <h3 class="text-[12px] font-semibold text-gray-700 uppercase tracking-wide"><i class="fa-solid fa-closed-captioning text-indigo-500"></i> Call Transcription</h3>
-      <label class="flex items-center gap-1.5 text-xs text-gray-600"><input type="checkbox" id="txActive" class="chk"> Enabled</label>
-    </div>
-    <p class="text-xs text-gray-500 mb-2">Transcribes a call recording <b>on request</b> — an agent/manager clicks "Transcribe" on a call in the Conversations monitor and the recording is sent here for a transcript. Same STT service as timesheet voice dictation, configured separately.</p>
-    <div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-      <label class="md:col-span-2">Transcription API URL<input id="txUrl" class="ctl w-full mt-1" placeholder="https://…/voice/transcribe"></label>
-      <label>Language<input id="txLang" class="ctl w-full mt-1" placeholder="en"></label>
-      <label class="md:col-span-2">API key<input id="txKey" type="password" class="ctl w-full mt-1" placeholder="••••••"></label>
-    </div>
-    <div class="mt-3 flex flex-wrap items-center gap-2">
-      <button onclick="saveTx()" class="btn-p"><i class="fa-solid fa-floppy-disk"></i> Save settings</button>
-      <span id="txMsg" class="text-xs"></span>
-    </div>
-  </div>
-
   <!-- CUSTOM FIELDS -->
   <div class="card p-3">
     <div class="flex items-center justify-between mb-3">
@@ -228,6 +240,7 @@ $__kpaMgrPlus = $__kpaRole === 'admin' || $__kpaRole === 'manager' || $__kpaRole
       <select id="entity" onchange="loadFields()" class="h-7 text-xs border rounded px-2">
         <option value="lead">Lead</option><option value="account">Account</option>
         <option value="contact">Contact</option><option value="deal">Deal</option><option value="merchant">Merchant</option>
+        <option value="employee">User / Employee</option>
       </select>
     </div>
     <div class="overflow-x-auto border rounded-lg mb-3">
@@ -480,23 +493,7 @@ async function saveTp(){
   if (r.success){ toast('Telephony settings saved'); E('tpToken').value=''; loadTp(); } else toast(r.error||'Failed', false);
 }
 
-/* ---- call transcription ---- */
-async function loadTx(){
-  const { data:c } = await apiGet('transcription-settings.php');
-  if (!c || !c.id) return;
-  E('txActive').checked = c.enabled==1; E('txUrl').value = c.api_url||''; E('txLang').value = c.lang||'en';
-  E('txKey').placeholder = c.has_key==1 ? '•••••• (saved — leave blank to keep)' : '••••••';
-}
-async function saveTx(){
-  const body = { enabled:E('txActive').checked?1:0, api_url:E('txUrl').value, lang:E('txLang').value };
-  if (E('txKey').value) body.api_key = E('txKey').value;
-  const r = await apiSend('transcription-settings.php', body);
-  const msg = E('txMsg');
-  if (r.success){ toast('Transcription settings saved'); E('txKey').value=''; msg.textContent=''; loadTx(); }
-  else { toast(r.error||'Failed', false); msg.textContent = r.error||'Failed'; msg.className='text-xs text-red-500'; }
-}
-
-/* ---- AI & Voice ---- */
+/* ---- AI ---- */
 function renderHealth(h){
   const el = E('aiHealth');
   if (!h || h.up === null) { el.innerHTML = '<span class="text-gray-400">box disabled</span>'; return; }
@@ -629,10 +626,10 @@ const HELP = {
         link: { label: 'Google App Passwords', url: 'https://myaccount.google.com/apppasswords' } }],
     fields: 'Fill: Protocol (IMAP), Host, Port, Encryption, Username, Password, Folder (INBOX).' },
 
-  ai: { title: 'AI box keys',
-    intro: 'The AI box is your <b>Superchat</b> on-prem engine. For the box address, API key and restart token, contact Superchat.',
+  ai: { title: 'AI box & keys',
+    intro: 'The AI box is your <b>Superchat</b> on-prem engine. For the box address, API keys and restart token, contact Superchat.',
     steps: [
-      'Enter the <b>AI box URL/IP</b> your Superchat deployment runs on. It must be reachable from the server the CRM runs on — a LAN address will not work from a cloud host.',
+      'Enter the <b>AI box URL/IP</b> your Superchat deployment runs on (e.g. <i>http://192.168.0.100:8000</i>).',
       'Get the <b>AI API key</b> and <b>Restart token</b> from Superchat and paste them here.',
       '<b>Cloud fallback</b> (optional): an external chat endpoint used only when the box is down.'],
     link: { label: 'For keys, contact Superchat — superchat.in', url: 'https://www.superchat.in' },
@@ -655,8 +652,43 @@ makeQR();
 loadEmail();
 loadWa();
 loadTp();
-loadTx();
 loadAi();
 loadMboxes();
+
+/* ===== Auto-email alerts ===== */
+async function loadAlerts(){
+  try {
+    const { data } = await apiGet('alert-settings.php', {});
+    const s = data.settings;
+    E('alEnabled').checked = !!+s.alerts_enabled; E('alCcMgr').checked = !!+s.cc_manager;
+    E('alTs').checked = !!+s.timesheet_alert; E('alSla').checked = !!+s.sla_alert;
+    E('alTgt').checked = !!+s.target_alert; E('alTh').value = s.target_threshold_pct;
+    E('alSmtp').innerHTML = data.smtp_ready
+      ? '<span class="text-green-600">● SMTP configured</span>'
+      : '<span class="text-red-600">● SMTP not configured — set Email above first</span>';
+    E('alLog').innerHTML = (data.log||[]).map(l=>`
+      <tr><td class="text-[10px] text-gray-400 whitespace-nowrap">${esc(String(l.created_at||'').slice(5,16))}</td>
+      <td>${badge(l.alert_type, l.alert_type==='sla_breach'||l.alert_type==='sla_escalated_to'?'red':l.alert_type==='timesheet_missing'?'yellow':'blue')}</td>
+      <td class="text-[11px]">${esc(l.full_name||('#'+l.employee_id))}</td>
+      <td class="text-[10px]">${esc(l.sent_to||'—')}</td>
+      <td class="text-[10px]">${esc(l.cc_manager_to||'—')}</td>
+      <td>${badge(l.status, l.status==='sent'?'green':l.status==='failed'?'red':'gray')}</td></tr>`).join('')
+      || '<tr><td colspan="6" class="text-gray-400 text-center py-2 text-xs">No alert emails yet</td></tr>';
+  } catch(e){ document.getElementById('alertCard').style.display='none'; }
+}
+async function saveAlerts(){
+  const r = await apiSend('alert-settings.php', {
+    alerts_enabled: E('alEnabled').checked?1:0, cc_manager: E('alCcMgr').checked?1:0,
+    timesheet_alert: E('alTs').checked?1:0, sla_alert: E('alSla').checked?1:0,
+    target_alert: E('alTgt').checked?1:0, target_threshold_pct: +E('alTh').value||70 });
+  toast(r.success ? 'Alert settings saved' : (r.error||'Failed'), !!r.success);
+  loadAlerts();
+}
+async function runAlertsNow(){
+  const r = await apiSend('alert-settings.php?run_now=1', {});
+  if (r.success){ const s=r.data; toast(`Sweep done — ${s.timesheet_alerts} timesheet, ${s.target_alerts} target alert(s), ${s.skipped} throttled`); loadAlerts(); }
+  else toast(r.error||'Failed', false);
+}
+loadAlerts();
 </script>
 </html>

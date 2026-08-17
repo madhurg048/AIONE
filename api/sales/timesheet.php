@@ -32,7 +32,7 @@ if (method() === 'POST' && isset($_GET['ai_fill'])) {
     $av->execute([$me, $date]);
     foreach ($av->fetchAll() as $r) $acts[] = "{$r['activity_type']}: {$r['subject']}";
 
-    if (!$acts) ok(['entries' => [], 'note' => 'No recorded activity found for ' . $date . ' — add entries manually or by voice.']);
+    if (!$acts) ok(['entries' => [], 'note' => 'No recorded activity found for ' . $date . ' — add entries manually.']);
 
     $prompt = 'Respond with ONLY raw JSON. You are a timesheet assistant for a sales rep.
 From the day\'s activities below, produce timesheet entries totalling about 8 hours.
@@ -55,12 +55,6 @@ Return: {"entries":[{"activity_type":"...","hours":<number>,"description":"short
                      'description'=>'Auto-draft: ' . count($acts) . ' activities on ' . $date]];
     }
     ok(['entries' => $entries, 'ai' => !empty($air), 'source' => $air['source'] ?? null]);
-}
-
-/* ---- VOICE PARSE: removed. Timesheet voice dictation has been retired org-wide.
-   Entries are added manually or via AI-fill (?ai=) above. Reject any stale caller. ---- */
-if (method() === 'POST' && isset($_GET['parse'])) {
-    fail('Voice dictation has been removed', 410);
 }
 
 /* ---- submit all drafts for a day ---- */

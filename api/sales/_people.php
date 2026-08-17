@@ -96,7 +96,7 @@ function people_list(PDO $db): array
     $rows = $db->query("
         SELECT e.id                AS employee_id,
                e.full_name, e.designation, e.department, e.sub_department,
-               e.email, e.phone, e.manager_id,
+               e.email, e.phone, e.manager_id, e.emp_type, e.governance,
                m.full_name         AS manager_name,
                su.id               AS user_id,
                su.username, su.role, su.is_active, su.last_login_at
@@ -165,6 +165,8 @@ function people_normalize_payload(PDO $db, array $b, ?int $existingEmployeeId = 
         'username'       => $wantsLogin ? $username : null,
         'role'           => $wantsLogin ? $role : null,
         'is_active'      => array_key_exists('is_active', $b) ? (!empty($b['is_active']) ? 1 : 0) : 1,
+        'emp_type'       => in_array($b['emp_type'] ?? '', ['employee', 'contractor'], true) ? $b['emp_type'] : 'employee',
+        'governance'     => in_array($b['governance'] ?? '', ['board', 'advisory', 'executive', 'execution'], true) ? $b['governance'] : 'execution',
     ];
 
     // Never let a plaintext password reach the approval queue — hash at submit time, so the
@@ -174,7 +176,43 @@ function people_normalize_payload(PDO $db, array $b, ?int $existingEmployeeId = 
         if (strlen($pw) < 6) fail('Password must be at least 6 characters');
         $out['password_hash'] = password_hash($pw, PASSWORD_DEFAULT);
     }
+    // Admin-defined additional fields ride along in the payload, so they are saved by
+    // whichever path creates/updates the person — immediately, or from the HR queue.
+    $out['custom'] = people_filter_custom($db, $b['custom'] ?? null);
     return $out;
+}
+
+/**
+ * Keep only values for DEFINED employee custom fields. Keys may be the field_key or
+ * the human label (bulk CSV headers use labels) — both resolve case-insensitively.
+ */
+function people_filter_custom(PDO $db, $custom): array
+{
+    if (!is_array($custom) || !$custom) return [];
+    $byKey = [];
+    foreach ($db->query("SELECT field_key, label FROM custom_fields WHERE entity='employee'")->fetchAll(PDO::FETCH_ASSOC) as $d) {
+        $byKey[strtolower($d['field_key'])] = $d['field_key'];
+        $byKey[strtolower(trim($d['label']))] = $d['field_key'];
+    }
+    $out = [];
+    foreach ($custom as $k => $v) {
+        $fk = $byKey[strtolower(trim((string)$k))] ?? null;
+        if ($fk !== null && $v !== null && trim((string)$v) !== '') $out[$fk] = trim((string)$v);
+    }
+    return $out;
+}
+
+/** Upsert an employee's custom-field values (EAV, same store the lead/deal forms use). */
+function people_save_custom(PDO $db, int $employeeId, array $values): void
+{
+    if (!$values) return;
+    $map = [];
+    foreach ($db->query("SELECT id, field_key FROM custom_fields WHERE entity='employee'")->fetchAll(PDO::FETCH_ASSOC) as $d) {
+        $map[$d['field_key']] = (int)$d['id'];
+    }
+    $up = $db->prepare("INSERT INTO custom_field_values (field_id, entity, entity_id, value) VALUES (?,?,?,?)
+                        ON DUPLICATE KEY UPDATE value=VALUES(value)");
+    foreach ($values as $k => $v) if (isset($map[$k])) $up->execute([$map[$k], 'employee', $employeeId, $v]);
 }
 
 /** Reporting line must exist and must not create a cycle. */
@@ -223,11 +261,14 @@ function people_create(PDO $db, array $p): array
 
     $db->beginTransaction();
     try {
-        $db->prepare("INSERT INTO employees (full_name, department, sub_department, designation, email, phone, manager_id)
-                      VALUES (?,?,?,?,?,?,?)")
+        $db->prepare("INSERT INTO employees (full_name, department, sub_department, designation, email, phone, manager_id, emp_type, governance)
+                      VALUES (?,?,?,?,?,?,?,?,?)")
            ->execute([$p['full_name'], $p['department'], $p['sub_department'], $p['designation'],
-                      $p['email'], $p['phone'], $p['manager_id']]);
+                      $p['email'], $p['phone'], $p['manager_id'] ?? null,
+                      $p['emp_type'] ?? 'employee', $p['governance'] ?? 'execution']);
         $employeeId = (int)$db->lastInsertId();
+        people_sync_governance_groups($db, $employeeId, $p['governance'] ?? 'execution');
+        if (!empty($p['custom'])) people_save_custom($db, $employeeId, $p['custom']);
 
         $userId = null;
         if (!empty($p['username'])) {
@@ -278,9 +319,11 @@ function people_update(PDO $db, array $p): array
     $db->beginTransaction();
     try {
         $db->prepare("UPDATE employees SET full_name=?, department=?, sub_department=?, designation=?,
-                             email=?, phone=?, manager_id=? WHERE id=?")
+                             email=?, phone=?, manager_id=?, emp_type=?, governance=? WHERE id=?")
            ->execute([$p['full_name'], $p['department'], $p['sub_department'], $p['designation'],
-                      $p['email'], $p['phone'], $p['manager_id'], $employeeId]);
+                      $p['email'], $p['phone'], $p['manager_id'] ?? null,
+                      $p['emp_type'] ?? 'employee', $p['governance'] ?? 'execution', $employeeId]);
+        people_sync_governance_groups($db, $employeeId, $p['governance'] ?? 'execution');
 
         if (!empty($p['username'])) {
             if ($login) {
@@ -296,12 +339,36 @@ function people_update(PDO $db, array $p): array
                               $employeeId, (int)($p['is_active'] ?? 1)]);
             }
         }
+        if (!empty($p['custom'])) people_save_custom($db, $employeeId, $p['custom']);
         $db->commit();
         return ['employee_id' => $employeeId];
     } catch (Throwable $e) {
         $db->rollBack();
         throw $e;
     }
+}
+
+/**
+ * Governance tier -> access-profile group sync:
+ *   board     -> member of the full-access "Board" group (all modules + all records)
+ *   executive -> member of "C-Suite" (its area modules)
+ * Any other tier removes the person from both. Non-fatal — a missing group just skips.
+ */
+function people_sync_governance_groups(PDO $db, int $employeeId, string $governance): void
+{
+    try {
+        foreach (['board' => 'Board', 'executive' => 'C-Suite'] as $tier => $groupName) {
+            $gid = $db->query("SELECT id FROM emp_groups WHERE name=" . $db->quote($groupName) . " AND is_active=1")->fetchColumn();
+            if (!$gid) continue;
+            if ($governance === $tier) {
+                $db->prepare("INSERT IGNORE INTO emp_group_members (group_id, employee_id) VALUES (?,?)")
+                   ->execute([(int)$gid, $employeeId]);
+            } else {
+                $db->prepare("DELETE FROM emp_group_members WHERE group_id=? AND employee_id=?")
+                   ->execute([(int)$gid, $employeeId]);
+            }
+        }
+    } catch (Throwable $e) { /* groups are an overlay — never break the person write */ }
 }
 
 /** Soft-deactivate a person's login (never hard-delete — their history must survive). */

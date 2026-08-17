@@ -2,14 +2,16 @@
 /**
  * chat_v3 -> OpenAI adapter (bridges the CRM's {user_input} contract to any
  * OpenAI-compatible LLM). Used as the last-resort AI fallback.
- * Defaults to the reachable Hetzner LLM so AI keeps working even when the
- * on-prem AI box is disabled or down. Override with env LLM_URL / LLM_KEY.
- * LLM_KEY has no hardcoded default — set it in the environment (or .env).
+ * Endpoint + key come from the environment (LLM_URL / LLM_KEY). With no LLM_URL
+ * set this simply reports the AI as unavailable — every caller already handles
+ * that (pages fall back to evidence-only mode).
  */
-require_once __DIR__ . '/config/app.php';
+require_once __DIR__ . '/config/env.php';
+
 header('Content-Type: application/json');
-$LLM = getenv('LLM_URL') ?: 'https://167.235.90.27/v1/chat/completions';   // Hetzner Qwen3 fallback
-$LLM_KEY = getenv('LLM_KEY') ?: (getenv('SERVICE_CHAT_KEY') ?: '');
+$LLM     = env('LLM_URL', '');
+$LLM_KEY = env('LLM_KEY', '');
+if ($LLM === '') { http_response_code(503); echo json_encode(['error' => 'llm not configured']); exit; }
 $in = json_decode(file_get_contents('php://input'), true) ?: [];
 $userInput = $in['user_input'] ?? '';
 $len = $in['response_length'] ?? 'medium';

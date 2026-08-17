@@ -7,6 +7,7 @@
  * For each active 'time_based' rule it selects records of the rule's entity and
  * runs the standard engine (which re-checks conditions like older_than_days).
  */
+require_once __DIR__ . '/_cron_guard.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../api/sales/_automation_engine.php';
 

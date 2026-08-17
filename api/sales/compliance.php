@@ -20,6 +20,7 @@
  *   POST compliance.php?action=run_reminders       -> run the daily sweep now
  */
 require_once __DIR__ . '/_bootstrap.php';
+require_once __DIR__ . '/_governance.php';
 require_once __DIR__ . '/_escalation_engine.php';
 require_once __DIR__ . '/_compliance_engine.php';
 require_login();
@@ -127,7 +128,9 @@ if (method() === 'POST' && !isset($_GET['action']) && !isset($_GET['id'])) { // 
                      ->execute([$id, $emp, mb_substr((string)($s['role'] ?? 'stakeholder'), 0, 60) ?: 'stakeholder']);
     }
     comp_log($db, $id, 'created', $type . ' · ' . (($b['category'] ?? '') ?: 'uncategorised'));
-    ok(['id' => $id]);
+    gov_approval($db, 'policy', $id, true);                        // needs review + approval
+    gov_revise($db, 'policy', $id, 'created', 'policy "' . $title . '" created');
+    ok(['id' => $id, 'policy_no' => gov_code($db, 'policy', $id)]);
 }
 
 if ((method() === 'PATCH' || method() === 'PUT') && isset($_GET['id'])) {
@@ -145,7 +148,9 @@ if ((method() === 'PATCH' || method() === 'PUT') && isset($_GET['id'])) {
     $args[] = $id;
     $db->prepare("UPDATE compliance_items SET " . implode(',', $set) . " WHERE id=?")->execute($args);
     comp_log($db, $id, 'updated', null);
-    ok(['id' => $id]);
+    gov_revise($db, 'policy', $id, 'updated', 'edited: ' . implode(', ', array_map(fn($x) => explode('=', $x)[0], $set)));
+    gov_touch($db, 'policy', $id);                                 // an edited policy needs re-approval
+    ok(['id' => $id, 'policy_no' => gov_code($db, 'policy', $id)]);
 }
 
 if (method() === 'POST' && isset($_GET['id'], $_GET['stakeholders'])) {

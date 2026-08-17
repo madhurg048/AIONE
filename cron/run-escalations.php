@@ -8,6 +8,7 @@
  * its escalation chain (manager -> manager's manager -> ... -> admin), and
  * closes escalation log rows whose task has been completed.
  */
+require_once __DIR__ . '/_cron_guard.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../api/sales/_escalation_engine.php';
 

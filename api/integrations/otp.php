@@ -14,18 +14,23 @@
 require_once __DIR__ . '/_auth.php';
 require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/../sales/_otp_engine.php';
+require_once __DIR__ . '/_apps.php';
 
 $db = idb();
-$tok = integration_auth($db, 'otp');
+// Per-APP keys (api_apps, from IT → App API Keys) are the primary credential;
+// legacy integration_tokens with scope 'otp' keep working.
+$app = app_auth_optional($db, 'otp');
+$tok = $app ? null : integration_auth($db, 'otp');
 $b = ibody();
 $action = $_GET['action'] ?? ($b['action'] ?? '');
 
 $channel = strtolower(trim((string)($b['channel'] ?? '')));
 $to      = (string)($b['to'] ?? ($b['recipient'] ?? ''));
-$purpose = substr(trim((string)($b['purpose'] ?? 'generic')) ?: 'generic', 0, 60);
+$purpose = substr(trim((string)($b['purpose'] ?? 'generic')) ?: 'generic', 0, 80);
 
 if ($action === 'send') {
-    [$ok, $msg, $id] = otp_send($db, $channel, $to, $purpose, 'token:' . ($tok['label'] ?? 'api'));
+    $via = $app ? ('app:' . $app['app_code']) : ('token:' . ($tok['label'] ?? 'api'));
+    [$ok, $msg, $id] = otp_send($db, $channel, $to, $purpose, $via, $app);
     if (!$ok) ifail($msg, 422);
     iok(['message' => $msg, 'otp_id' => $id]);
 }

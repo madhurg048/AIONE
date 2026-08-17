@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_governance.php';   // codes + version history for KPA/KRA
 /**
  * HR maker-checker — an HR Head signs off on what their team changes.
  *
@@ -160,7 +161,13 @@ function hr_apply_kpa_create(PDO $db, array $p): array
         VALUES (?,?,?,?,?,?,?,?,?,?,?,1)")
        ->execute([$p['scope'], $p['org_group'], $p['owner_employee_id'], $p['created_by'], $p['created_by_role'],
                   $p['title'], $p['kra'], $p['weight'], $p['target_value'], $p['unit'], $p['period']]);
-    return ['id' => (int)$db->lastInsertId()];
+    $kid = (int)$db->lastInsertId();
+    gov_assign_code($db, 'kpa_goals', $kid,
+        gov_domain_for((string)$p['title'] . ' ' . (string)$p['kra'], $p['org_group'] ?? null));
+    gov_approval($db, 'kpa', $kid, true);                       // KPA/KRA needs review + approval
+    gov_revise($db, 'kpa', $kid, 'created', 'KPA "' . $p['title'] . '" created'
+               . ($p['kra'] ? ' with KRA' : ''));
+    return ['id' => $kid, 'code' => gov_code($db, 'kpa', $kid)];
 }
 
 function hr_apply_kpa_update(PDO $db, array $p): array
@@ -176,7 +183,9 @@ function hr_apply_kpa_update(PDO $db, array $p): array
     if (!$set) fail('Nothing to update');
     $args[] = $id;
     $db->prepare("UPDATE kpa_goals SET " . implode(',', $set) . " WHERE id=?")->execute($args);
-    return ['id' => $id];
+    gov_revise($db, 'kpa', $id, 'updated', 'edited: ' . implode(', ', array_keys($fields)));
+    gov_touch($db, 'kpa', $id);                                 // edited KPA goes back to draft
+    return ['id' => $id, 'code' => gov_code($db, 'kpa', $id)];
 }
 
 function hr_apply_kpa_delete(PDO $db, array $p): array

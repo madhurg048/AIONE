@@ -36,6 +36,7 @@ sales_nav('leads');
         <i class="fa-solid fa-bell text-amber-500"></i> Due <span id="dueCount" class="bg-gray-100 text-gray-500 rounded-full px-1.5 text-[10px]">0</span>
       </button>
       <div class="flex-1"></div>
+      <span id="assignCtl"></span>
       <button onclick="openLeadForm()" class="btn-p"><i class="fa-solid fa-plus"></i> New Lead</button>
     </div>
 
@@ -157,6 +158,19 @@ async function loadMetrics() {
 }
 
 /* ---- list ---- */
+// A non-technical rep/manager has no way to know a lead auto-reassigns to someone else after
+// N idle days (a backend cron rule) unless we surface it here. Only warns once it's genuinely
+// close (<=3 days left) so the badge isn't noise on every ordinary new/contacted lead.
+function staleBadge(l) {
+  if (l.stale_days_left === null || l.stale_days_left === undefined) return '';
+  const left = l.stale_days_left;
+  if (left > 3) return '';
+  const urgent = left <= 1;
+  const label = left <= 0 ? 'reassigns today' : `reassigns in ${left}d`;
+  return ` <span class="inline-flex items-center gap-1 ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${urgent ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}"
+    title="No activity in ${l.stale_idle_days} days — this lead auto-reassigns to another rep if it stays untouched. Log a follow-up to reset it.">
+    <i class="fa-solid fa-triangle-exclamation"></i> ${label}</span>`;
+}
 function fmtNext(dt) {
   if (!dt) return '<span class="text-gray-300">—</span>';
   const d = new Date(dt.replace(' ', 'T')), s = dt.slice(0, 16).replace('T', ' ');
@@ -202,7 +216,7 @@ async function load() {
       <td>${l.score>0 ? badge(l.score, l.score>=70?'green':l.score>=40?'yellow':'gray') : '<span class="text-gray-300">—</span>'}</td>
       <td>${fmtNext(l.next_followup_at)}</td>
       <td class="text-gray-400 whitespace-nowrap">${esc(String(l.display_created_at||l.created_at||'').slice(0,16).replace('T',' '))}</td>
-      <td class="text-gray-600">${esc(l.owner_name||'—')}</td>
+      <td class="text-gray-600">${esc(l.owner_name||'—')}${staleBadge(l)}</td>
       <td class="rowact">
         <button onclick="followUp(${l.id})" title="Follow-up" class="text-indigo-600 hover:text-indigo-800"><i class="fa-solid fa-clipboard-check"></i></button>
         <button onclick="waLead(${l.id})" title="WhatsApp" class="text-green-600 hover:text-green-700"><i class="fa-brands fa-whatsapp"></i></button>
@@ -245,11 +259,12 @@ function openLeadForm() {
         <input name="first_name" placeholder="First name" class="border rounded px-2 py-1.5">
         <input name="last_name" placeholder="Last name" class="border rounded px-2 py-1.5">
       </div>
-      <input name="company" placeholder="Company" class="border rounded px-2 py-1.5 w-full">
+      <input name="company" placeholder="Company" class="border rounded px-2 py-1.5 w-full" oninput="dupCheckSoon(this.form)">
       <div class="grid grid-cols-2 gap-3">
-        <input name="email" placeholder="Email" class="border rounded px-2 py-1.5">
-        <input name="phone" placeholder="Phone" class="border rounded px-2 py-1.5">
+        <input name="email" placeholder="Email" class="border rounded px-2 py-1.5" oninput="dupCheckSoon(this.form)">
+        <input name="phone" placeholder="Phone" class="border rounded px-2 py-1.5" oninput="dupCheckSoon(this.form)">
       </div>
+      <div id="dupWarn"></div>
       <input name="subject" placeholder="Subject" class="border rounded px-2 py-1.5 w-full">
       <div class="grid grid-cols-2 gap-3">
         <select name="lead_source" class="border rounded px-2 py-1.5">
@@ -267,6 +282,67 @@ function openLeadForm() {
     </form>`, 'New Lead');
   loadCustomFields('lead', 'customFields');
 }
+
+/* ---- AI duplicate warning while typing a new lead (non-blocking) ---- */
+let dupTimer = null, dupSeq = 0;
+function dupCheckSoon(form) {
+  clearTimeout(dupTimer);
+  dupTimer = setTimeout(() => dupCheck(form), 500);
+}
+async function dupCheck(form) {
+  const box = document.getElementById('dupWarn');
+  if (!box) return;
+  const company = form.company.value.trim(), email = form.email.value.trim(), phone = form.phone.value.trim();
+  const name = (form.first_name.value + ' ' + form.last_name.value).trim();
+  if (company.length < 3 && !email && phone.replace(/\D/g,'').length < 6) { box.innerHTML = ''; return; }
+  const seq = ++dupSeq;
+  const res = await apiGet('leads.php', { dupcheck: 1, company, email, phone, name });
+  if (seq !== dupSeq || !res.success) return;      // a newer keystroke superseded this check
+  const d = res.data;
+  if (!d.matches || !d.matches.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="border border-amber-300 bg-amber-50 rounded-lg p-2.5 space-y-1.5">
+    <div class="flex items-start gap-2 text-amber-800">
+      <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+      <div class="font-medium">${esc(d.warning || 'Possible duplicate lead')}</div>
+    </div>
+    ${d.matches.map(m => `<div class="flex items-center gap-2 pl-6 text-[11px] text-amber-700">
+      <span class="font-semibold">#${m.id}</span>
+      <span>${esc(((m.first_name||'') + ' ' + (m.last_name||'')).trim() || '—')}</span>
+      <span class="text-amber-500">@ ${esc(m.company || '—')}</span>
+      ${badge(m.lead_status, m.lead_status === 'converted' ? 'green' : 'yellow')}
+      <span class="text-amber-500">owner: ${esc(m.owner_name || 'unassigned')}</span>
+    </div>`).join('')}
+    <div class="pl-6 text-[10px] text-amber-600">You can still save — this is a warning, not a block.</div>
+  </div>`;
+}
+
+/* ---- auto-assign switch (team leads / managers only) ---- */
+async function loadAssignCtl() {
+  const el = document.getElementById('assignCtl');
+  if (!el) return;
+  const res = await apiGet('leads.php', { assign_settings: 1 });
+  if (!res.success || !res.data.can_manage) return;
+  const d = res.data;
+  window.__assignOn = d.auto_assign ? 1 : 0;
+  el.innerHTML = `<span class="flex items-center gap-1.5 text-[11px] text-gray-500 border border-gray-200 rounded-lg px-2 py-1 bg-white">
+    <i class="fa-solid fa-shuffle ${d.auto_assign ? 'text-indigo-500' : 'text-gray-300'}"></i>
+    Auto-assign
+    <select id="assignGroup" onchange="if(window.__assignOn)toggleAssign(1)" class="border rounded px-1 py-0.5 text-[11px] ${d.auto_assign ? '' : 'opacity-50'}">
+      ${(d.groups||[]).map(g => `<option value="${g.id}" ${g.id == d.group_id ? 'selected' : ''}>${esc(g.name)} (${g.members})</option>`).join('')}
+    </select>
+    <button onclick="toggleAssign(${d.auto_assign ? 0 : 1})" title="${d.auto_assign ? 'ON — leads go to the least-loaded member of the group. Click to turn off.' : 'OFF — whoever brings a lead keeps it. Click to turn on.'}"
+      class="rounded-full w-8 h-4 relative transition-all ${d.auto_assign ? 'bg-indigo-500' : 'bg-gray-300'}">
+      <span class="absolute top-0.5 ${d.auto_assign ? 'right-0.5' : 'left-0.5'} w-3 h-3 bg-white rounded-full"></span>
+    </button>
+  </span>`;
+}
+async function toggleAssign(on) {
+  const gid = document.getElementById('assignGroup')?.value || 0;
+  const res = await apiSend('leads.php?action=assign_settings', { auto_assign: on, group_id: gid });
+  if (res.success) { toast(on ? 'Auto-assign ON — new leads go to the least-loaded group member' : 'Auto-assign OFF — lead creators keep their own leads'); loadAssignCtl(); }
+  else toast(res.error || 'Failed', false);
+}
+loadAssignCtl();
 async function loadCustomFields(entity, containerId) {
   const { data: defs } = await apiGet('custom-fields.php', { entity });
   const el = document.getElementById(containerId);
@@ -338,10 +414,25 @@ function viewHandoff(id) {
 }
 
 /* ---- edit ---- */
+// Plain-language banner for the lead detail/edit modal — same signal as staleBadge() above,
+// spelled out fully since this is where someone would actually act on it (log a follow-up
+// via the Follow-up button, or just save an edit — either touches updated_at and resets it).
+function staleBanner(l) {
+  if (l.stale_days_left === null || l.stale_days_left === undefined || l.stale_days_left > 3) return '';
+  const left = l.stale_days_left;
+  const urgent = left <= 1;
+  const when = left <= 0 ? 'today' : `in ${left} day${left === 1 ? '' : 's'}`;
+  return `<div class="text-xs mb-3 px-3 py-2 rounded border ${urgent ? 'bg-red-50 border-red-200 text-red-700' : 'bg-amber-50 border-amber-200 text-amber-700'}">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <strong>No activity in ${l.stale_idle_days} days.</strong>
+    This lead will auto-reassign to another rep ${when} if it stays untouched. Log a follow-up to keep it.
+  </div>`;
+}
 function editLead(id) {
   const l = LEADS.find(x => +x.id === +id);
   if (!l) return;
   openModal(`
+    ${staleBanner(l)}
     <form onsubmit="saveLeadEdit(event, ${id})" class="space-y-3 text-xs">
       <div class="grid grid-cols-2 gap-3">
         <div><label class="block text-gray-500 mb-1">First name</label><input name="first_name" class="border rounded px-2 py-1.5 w-full" value="${esc(l.first_name||'')}"></div>
@@ -401,6 +492,7 @@ async function followUp(id) {
     ${f.feedback?`<div class="text-gray-600">${esc(f.feedback)}</div>`:''}
     <div class="text-[10px] text-gray-400">by ${esc(f.by_name||'—')}${f.next_followup_at?` · next: ${esc(String(f.next_followup_at).slice(0,16))}`:''}</div></div>`).join('') : '<div class="text-gray-400">No follow-ups yet.</div>';
   openModal(`<div class="text-xs space-y-3">
+    ${staleBanner(l)}
     <div class="bg-gray-50 rounded p-2"><div class="font-semibold">${esc((l.first_name||'')+' '+(l.last_name||''))} · ${esc(l.company||'')}</div>
       <div class="text-gray-500">${esc(l.phone||'')} ${l.email?('· '+esc(l.email)):''} · status: ${esc(l.lead_status)}${l.followup_count>0?(' · '+l.followup_count+' follow-ups'):''}</div></div>
     <form onsubmit="saveFollowup(event, ${id})" class="space-y-2">

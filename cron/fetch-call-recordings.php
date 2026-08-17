@@ -10,6 +10,7 @@
  * will never get one (e.g. recording disabled account-side).
  */
 // crontab, run every 10 min: */10 * * * *  php /path/payg/cron/fetch-call-recordings.php
+require_once __DIR__ . '/_cron_guard.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../api/sales/_telephony.php';
 

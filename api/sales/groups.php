@@ -33,6 +33,16 @@ if (method() === 'GET' && isset($_GET['mine'])) {
 
 if (!$canManage) fail('Managing groups requires admin or HR', 403);
 
+if (method() === 'GET' && isset($_GET['memberships'])) {
+    // employee_id -> [group ids]; feeds the People grid's Groups column
+    $out = [];
+    foreach ($db->query("SELECT m.employee_id, m.group_id FROM emp_group_members m
+                           JOIN emp_groups g ON g.id=m.group_id WHERE g.is_active=1")->fetchAll() as $r) {
+        $out[(int)$r['employee_id']][] = (int)$r['group_id'];
+    }
+    ok($out);
+}
+
 if (method() === 'GET' && isset($_GET['employees'])) {
     ok($db->query("SELECT e.id, e.full_name, e.designation, su.role
                      FROM employees e LEFT JOIN sales_users su ON su.employee_id=e.id AND su.is_active=1
@@ -91,6 +101,11 @@ if ((method() === 'PATCH' || method() === 'PUT') && isset($_GET['id'])) {
     if (array_key_exists('name', $b) && trim($b['name']) !== '') { $set[] = "name=?"; $args[] = trim($b['name']); }
     if (array_key_exists('description', $b)) { $set[] = "description=?"; $args[] = ($b['description'] ?? null) ?: null; }
     if (array_key_exists('is_active', $b))   { $set[] = "is_active=?";   $args[] = (int)!!$b['is_active']; }
+    if (array_key_exists('grant_all', $b)) {
+        // FULL ACCESS is the platform's master key — only the admin may hand it out
+        if (current_role() !== 'admin') fail('Only the admin can grant or revoke FULL ACCESS', 403);
+        $set[] = "grant_all=?"; $args[] = (int)!!$b['grant_all'];
+    }
     if (!$set) fail('Nothing to update');
     $args[] = $id;
     $db->prepare("UPDATE emp_groups SET " . implode(',', $set) . " WHERE id=?")->execute($args);

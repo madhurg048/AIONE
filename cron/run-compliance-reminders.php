@@ -8,6 +8,7 @@
  * (or past) its reminder window, and opens a renewal task for the owner —
  * which then rides the normal SLA/escalation engine if ignored.
  */
+require_once __DIR__ . '/_cron_guard.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../api/sales/_escalation_engine.php';
 require_once __DIR__ . '/../api/sales/_compliance_engine.php';

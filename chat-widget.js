@@ -5,6 +5,35 @@
 (function () {
     'use strict';
 
+    /**
+     * CRM_ORIGIN — where the chatbot (chat.php) and its API endpoints live.
+     * This is the ONE place the CRM host is defined; the iframe URL is derived
+     * from it everywhere below. It used to be hardcoded as
+     * "https://crm.payg-india.com/payg/chat.php" in four separate places.
+     *
+     * Override without editing this file by setting, BEFORE the <script> tag:
+     *     <script>window.PAYG_CRM_ORIGIN = 'https://aione.payg.in';</script>
+     *     <script src="https://aione.payg.in/chat-widget.js"></script>
+     *
+     * Defaults to the origin this script itself was served from, so if the
+     * widget is loaded from aione.payg.in the iframe follows automatically.
+     */
+    const CRM_ORIGIN = (function () {
+        if (typeof window !== 'undefined' && window.PAYG_CRM_ORIGIN) {
+            return String(window.PAYG_CRM_ORIGIN).replace(/\/+$/, '');
+        }
+        try {
+            var self = document.currentScript && document.currentScript.src;
+            if (self) return new URL(self, window.location.href).origin;
+        } catch (e) { /* fall through */ }
+        return 'https://aione.payg.in';
+    })();
+
+    /** Full chatbot URL. `params` is an optional query string without the '?'. */
+    function chatUrl(params) {
+        return CRM_ORIGIN + '/chat.php' + (params ? '?' + params : '');
+    }
+
     // Widget configuration
     const config = {
         apiUrl: '/api',
@@ -201,7 +230,7 @@
                 <!-- Chat iframe -->
                 <iframe
                     id="paygChatIframe"
-                    src="https://crm.payg-india.com/payg/chat.php"
+                    src="${chatUrl()}"
                     style="
                     width:100%;
                     height:100%;
@@ -363,12 +392,12 @@
 
         });
         homeBtn.addEventListener('click', () => {
-            iframe.src = "https://crm.payg-india.com/payg/chat.php?home=1&refresh=" + Date.now();
+            iframe.src = chatUrl("home=1&refresh=" + Date.now());
         });
         function resetIframe() {
             const iframe = document.getElementById('paygChatIframe');
             if (iframe) {
-                iframe.src = "https://crm.payg-india.com/payg/chat.php?refresh=" + Date.now();
+                iframe.src = chatUrl("refresh=" + Date.now());
             }
         }
     }
@@ -409,7 +438,7 @@
         if (chatState.isOpen) {
             // ?? refresh iframe before closing
             if (iframe) {
-                iframe.src = "https://crm.payg-india.com/payg/chat.php?refresh=" + Date.now();
+                iframe.src = chatUrl("refresh=" + Date.now());
             }
             chatWindow.style.display = 'none';
             chatState.isOpen = false;

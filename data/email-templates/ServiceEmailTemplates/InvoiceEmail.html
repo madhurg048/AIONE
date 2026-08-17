@@ -1,0 +1,754 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="x-apple-disable-message-reformatting" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="supported-color-schemes" content="light dark" />
+    <title></title>
+    <style type="text/css" rel="stylesheet" media="all">
+
+        @import url("https://fonts.googleapis.com/css?family=Nunito+Sans:400,700&display=swap");
+
+        body {
+            width: 100% !important;
+            height: 100%;
+            margin: 0;
+            -webkit-text-size-adjust: none;
+        }
+
+        a {
+            color: #3869D4;
+        }
+
+            a img {
+                border: none;
+            }
+
+        td {
+            word-break: break-word;
+        }
+
+        .preheader {
+            display: none !important;
+            visibility: hidden;
+            mso-hide: all;
+            font-size: 1px;
+            line-height: 1px;
+            max-height: 0;
+            max-width: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+
+        .heading_bill {
+            border-left: 2px solid var(--primary-color, #27ae60);
+            max-width: -webkit-max-content;
+            max-width: -moz-max-content;
+            max-width: max-content;
+            font-size: 14px;
+            color: #516173;
+            background-color: rgba(39, 174, 96, 0.1);
+            padding: 0 10px;
+            margin-bottom: 10px;
+        }
+        /* Type ------------------------------ */
+
+        body,
+        td,
+        th {
+            font-family: "Nunito Sans", Helvetica, Arial, sans-serif;
+        }
+
+        h1 {
+            margin-top: 0;
+            color: #333333;
+            font-size: 22px;
+            font-weight: bold;
+            text-align: left;
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #333333;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: left;
+        }
+
+        h3 {
+            margin-top: 0;
+            color: #333333;
+            font-size: 14px;
+            font-weight: bold;
+            text-align: left;
+        }
+
+        td,
+        th {
+            font-size: 16px;
+        }
+
+        p,
+        ul,
+        ol,
+        blockquote {
+            margin: .4em 0 1.1875em;
+            font-size: 14px;
+            line-height: 1.625;
+        }
+
+            p.sub {
+                font-size: 13px;
+            }
+        /* Utilities ------------------------------ */
+
+        .align-right {
+            text-align: right;
+        }
+
+        .align-left {
+            text-align: left;
+        }
+
+        .align-center {
+            text-align: center;
+        }
+        /* Buttons ------------------------------ */
+
+        .button {
+            background-color: #3869D4;
+            border-top: 10px solid #3869D4;
+            border-right: 18px solid #3869D4;
+            border-bottom: 10px solid #3869D4;
+            border-left: 18px solid #3869D4;
+            display: inline-block;
+            color: #FFF;
+            text-decoration: none;
+            border-radius: 3px;
+            box-shadow: 0 2px 3px rgba(0, 0, 0, 0.16);
+            -webkit-text-size-adjust: none;
+            box-sizing: border-box;
+        }
+
+        .button--green {
+            background-color: #0067EF;
+            border-top: 10px solid #0067EF;
+            border-right: 18px solid #0067EF;
+            border-bottom: 10px solid #0067EF;
+            border-left: 18px solid #0067EF;
+        }
+
+
+
+        @media only screen and (max-width: 500px) {
+            .button {
+                width: 100% !important;
+                text-align: center !important;
+            }
+        }
+        /* Attribute list ------------------------------ */
+
+        .attributes {
+            margin: 0 0 21px;
+        }
+
+        .attributes_content {
+            background-color: #F4F4F7;
+            padding: 16px;
+        }
+
+        .attributes_item {
+            padding: 0;
+            padding-bottom: 3px;
+        }
+        /* Related Items ------------------------------ */
+
+        .related {
+            width: 100%;
+            margin: 0;
+            padding: 25px 0 0 0;
+            -premailer-width: 100%;
+            -premailer-cellpadding: 0;
+            -premailer-cellspacing: 0;
+        }
+
+        .related_item {
+            padding: 10px 0;
+            color: #CBCCCF;
+            font-size: 15px;
+            line-height: 18px;
+        }
+
+        .related_item-title {
+            display: block;
+            margin: .5em 0 0;
+        }
+
+        .related_item-thumb {
+            display: block;
+            padding-bottom: 10px;
+        }
+
+        .related_heading {
+            border-top: 1px solid #CBCCCF;
+            text-align: center;
+            padding: 25px 0 10px;
+        }
+        /* Discount Code ------------------------------ */
+
+        .discount {
+            width: 100%;
+            margin: 0;
+            padding: 24px;
+            -premailer-width: 100%;
+            -premailer-cellpadding: 0;
+            -premailer-cellspacing: 0;
+            background-color: #F4F4F7;
+            border: 2px dashed #CBCCCF;
+        }
+
+        .discount_heading {
+            text-align: center;
+        }
+
+        .discount_body {
+            text-align: center;
+            font-size: 15px;
+        }
+        /* Social Icons ------------------------------ */
+
+        .social {
+            width: auto;
+        }
+
+            .social td {
+                padding: 0;
+                width: auto;
+            }
+
+        .social_icon {
+            height: 20px;
+            margin: 0 8px 10px 8px;
+            padding: 0;
+        }
+        /* Data table ------------------------------ */
+
+        .purchase {
+            width: 100%;
+            margin: 0;
+            padding: 5px 0;
+            -premailer-width: 100%;
+            -premailer-cellpadding: 0;
+            -premailer-cellspacing: 0;
+        }
+
+        .purchase_content {
+            width: 100%;
+            margin: 0;
+            padding: 5px 0 0 0;
+            -premailer-width: 100%;
+            -premailer-cellpadding: 0;
+            -premailer-cellspacing: 0;
+        }
+
+        .purchase_item {
+            padding: 10px 0;
+            color: #51545E;
+            font-size: 13px;
+            line-height: 5px;
+        }
+
+        .purchase_heading {
+            padding-bottom: 8px;
+            border-bottom: 1px solid #EAEAEC;
+        }
+
+            .purchase_heading p {
+                margin: 0;
+                color: #85878E;
+                font-size: 12px;
+            }
+
+        .purchase_footer {
+            padding-top: 15px;
+            border-top: 1px solid #EAEAEC;
+        }
+
+        .purchase_total {
+            margin: 0;
+            text-align: right;
+            font-weight: bold;
+            color: #333333;
+        }
+
+        .purchase_total--label {
+            padding: 0 15px 0 0;
+        }
+
+        body {
+            background-color: #F4F4F7;
+            color: #51545E;
+        }
+
+        p {
+            color: #51545E;
+        }
+
+            p.sub {
+                color: #6B6E76;
+            }
+
+        .email-wrapper {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            -premailer-width: 100%;
+            -premailer-cellpadding: 0;
+            -premailer-cellspacing: 0;
+            background-color: #F4F4F7;
+        }
+
+        .email-content {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            -premailer-width: 100%;
+            -premailer-cellpadding: 0;
+            -premailer-cellspacing: 0;
+        }
+        /* Masthead ----------------------- */
+
+        .email-masthead {
+            padding: 25px 0;
+            text-align: center;
+        }
+
+        .email-masthead_logo {
+            width: 94px;
+        }
+
+        .email-masthead_name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #A8AAAF;
+            text-decoration: none;
+            text-shadow: 0 1px 0 white;
+        }
+        /* Body ------------------------------ */
+
+        .email-body {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            -premailer-width: 100%;
+            -premailer-cellpadding: 0;
+            -premailer-cellspacing: 0;
+            background-color: #FFFFFF;
+        }
+
+        .email-body_inner {
+            width:650px;
+            margin: 0 auto;
+            padding: 0;
+            -premailer-width: 570px;
+            -premailer-cellpadding: 0;
+            -premailer-cellspacing: 0;
+            background-color: #FFFFFF;
+        }
+
+        .email-footer {
+            width: 650px;
+            margin: 0 auto;
+            padding: 0;
+            -premailer-width: 570px;
+            -premailer-cellpadding: 0;
+            -premailer-cellspacing: 0;
+            text-align: center;
+        }
+
+            .email-footer p {
+                color: #6B6E76;
+            }
+
+        .body-action {
+            width: 100%;
+            margin: 30px auto;
+            padding: 0;
+            -premailer-width: 100%;
+            -premailer-cellpadding: 0;
+            -premailer-cellspacing: 0;
+            text-align: center;
+        }
+
+        .body-sub {
+            width: 100%;
+            padding-top: 15px;
+            border-top: 1px solid #EAEAEC;
+        }
+
+        .content-cell {
+            padding: 35px;
+        }
+        /*Media Queries ------------------------------ */
+
+        @media only screen and (max-width: 600px) {
+            .email-body_inner,
+            .email-footer {
+                width: 100% !important;
+            }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body,
+            .email-body,
+            .email-body_inner,
+            .email-content,
+            .email-wrapper,
+            .email-masthead,
+            .email-footer {
+                background-color: #333333 !important;
+                color: #FFF !important;
+            }
+
+            p,
+            ul,
+            ol,
+            blockquote,
+            h1,
+            h2,
+            h3,
+            span,
+            .purchase_item {
+                color: #FFF !important;
+            }
+
+            .attributes_content,
+            .discount {
+                background-color: #222 !important;
+            }
+
+            .email-masthead_name {
+                text-shadow: none !important;
+            }
+        }
+
+        .f-fallback {
+            font-size: 13px;
+        }
+    </style>
+    <!--[if mso]>
+      <style type="text/css">
+        .f-fallback  {
+          font-family: Arial, sans-serif;
+        }
+      </style>
+    <![endif]-->
+</head>
+<body>
+    <span class="preheader">This is an invoice for your purchase on [RequestDate]. Please submit payment by [DueDate]</span>
+    <table class="email-wrapper" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+        <tr>
+            <td align="center">
+                <table class="email-body_inner" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+
+                    <!-- Email Body -->
+                    <tr>
+                        <td class="email-body" width="100%" cellpadding="0" cellspacing="0">
+                            <table class="email-body_inner" align="center" width="570" cellpadding="0" cellspacing="0" role="presentation">
+                                <!-- Body content -->
+                                <tr>
+                                    <td class="content-cell">
+                                        <div class="f-fallback">
+                                            <h1>Dear Customer,</h1>
+                                            <table class="attributes" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+                                                <tr>
+                                                    <td>
+                                                        <table width="100%" cellpadding="0" cellspacing="0">
+                                                            <tr>
+                                                                <td class="attributes_item" style="vertical-align: top;" width="50%">
+                                                                    <span class="f-fallback">
+                                                                        <h5 class="heading_bill">Billed To:</h5>
+                                                                        <h4 style="font-weight: 600; margin: 0;">[CustomerName]</h4>
+                                                                        <p style="font-size: 12px;"> [CustomerAddress]</p>
+                                                                    </span>
+                                                                </td>
+                                                                <td class="attributes_item" style="float: right;" width="50%">
+                                                                    <span class="f-fallback">
+                                                                        <h5 class="heading_bill">Billed By:</h5>
+                                                                        <h4 style="font-weight: 600; margin: 0;">[CompanyName] </h4>
+
+                                                                        <p style="font-size: 12px; margin-bottom: 0; line-height: 12px;">[Address],<br /> Phone Number : [CustomerServiceNo]</p>
+                                                                        <p style="font-size: 12px; margin-bottom: 0; line-height: 1;">GSTIN: [GSTNo]</p>
+                                                                        <p style="font-size: 12px; margin-bottom: 0; line-height: 1;">PAN: [Pancard]</p>
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td><h3 style="margin-bottom:0 ;">Please find Invoice details below</h3></td>
+                                                </tr>
+                                                <tr>
+
+                                                    <td class="attributes_content">
+
+                                                        <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+                                                            <tr>
+                                                                <td class="attributes_item">
+                                                                    <span class="f-fallback">
+                                                                        <strong>Amount Due:</strong> ₹[InvoiceAmount]
+                                                                    </span>
+                                                                </td>
+                                                                <td style="float:right">
+                                                                    <span class="f-fallback">
+                                                                        <strong>Invoice No:</strong> #[CustomerId]
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+
+
+                                                            <tr>
+                                                                <td class="attributes_item">
+                                                                    <span class="f-fallback">
+                                                                        <strong>Status :</strong> <font style="color: red;">Unpaid</font>
+                                                                    </span>
+                                                                </td>
+                                                                <td class="attributes_item" style="float: right;">
+                                                                    <span class="f-fallback">
+                                                                        <strong>Date :</strong> <font>[RequestDate]</font>
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                            </table>
+
+                                            <table class="purchase" width="100%" cellpadding="0" cellspacing="0">
+
+                                                <tr>
+                                                    <td colspan="2">
+                                                        <table class="purchase_content" width="100%" cellpadding="0" cellspacing="0">
+                                                          <tr>
+                                                            <td class="attributes_item">
+                                                              <span class="f-fallback">
+                                                                <strong>Description:</strong> [InvoiceDescription]
+                                                              </span>
+                                                            </td>
+                                                            <!--<th class="purchase_heading" align="left">
+      <p class="f-fallback">Description</p>
+  </th>
+  <th class="purchase_heading" align="right">
+
+  </th>-->
+                                                          </tr>
+
+                                                            <tr>
+                                                                <td width="80%" class="purchase_item"><span class="f-fallback">Invoice Amount</span></td>
+                                                                <td class="align-right" width="20%" class="purchase_item"><span class="f-fallback">₹[InvoiceAmount]</span></td>
+                                                            </tr>
+                                                            <!--<tr>
+                                                                <td width="80%" class="purchase_item"><span class="f-fallback">Gst Amount</span></td>
+                                                                <td class="align-right" width="20%" class="purchase_item"><span class="f-fallback">₹0</span></td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td width="80%" class="purchase_item"><span class="f-fallback">Convenient fee </span></td>
+                                                                <td class="align-right" width="20%" class="purchase_item"><span class="f-fallback">₹0</span></td>
+                                                            </tr>-->
+
+                                                            <tr>
+                                                                <td width="80%" class="purchase_footer" valign="middle">
+                                                                    <p class="f-fallback purchase_total purchase_total--label">Total</p>
+                                                                </td>
+                                                                <td width="20%" class="purchase_footer" valign="middle">
+                                                                    <p class="f-fallback purchase_total">₹[InvoiceAmount]</p>
+                                                                </td>
+                                                            </tr>
+                                                        </table>
+                                                        <!-- Action -->
+                                                        <table class="body-action" align="center" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+                                                            <tr>
+                                                                <td align="center">
+
+                                                                    <table width="100%" border="0" cellspacing="0" cellpadding="0" role="presentation">
+                                                                        <tr>
+                                                                            <td align="center">
+                                                                                <a href="[EmailVerificationLink]" class="f-fallback button button--green" style="color:#fff;" target="_blank">Pay Invoice</a>
+                                                                                <!--<a href="[EmailVerificationLink]" class="btn" itemprop="url" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; color: #FFF; text-decoration: none; line-height: 2em; font-weight: bold; text-align: center; cursor: pointer; display: inline-block; border-radius: 5px; text-transform: capitalize; background-color: #09bce1; margin: 0; border-color: #09bce1; border-style: solid; border-width: 10px 20px; ">Pay Invoice</a>-->
+                                                                            </td>
+                                                                        </tr>
+                                                                    </table>
+                                                                </td>
+                                                            </tr>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                            <p>
+                                                If you have any questions, please feel free to reach us at
+                                                <a href="https://payg.in/">www.payg.in</a>
+                                            </p>
+
+                                            <!-- Sub copy -->
+                                            <!-- <table class="body-sub" role="presentation">
+
+                                               <tr  class="attributes_content">
+                                                <td class="attributes_item" style="padding:15px;">
+                                                    <span class="f-fallback">
+                                                    <h3 style="margin-bottom:0 ;">Terms and Conditions</h3>
+                                                    <p>1. Please pay within 15 days from the date of invoice, overdue interest @ 14% will be charged on delayed payments</p>
+                                                    <p>2. Please pay within 15 days from the date of invoice, overdue interest @ 14% will be charged on delayed payments</p>
+                                                    </span>
+                                                  </td>
+
+                                               </tr>
+                                            </table> -->
+
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <table bgcolor="#ffffff" border="0" width="700" cellpadding="0" cellspacing="0" align="center" class="container">
+                                <tr>
+                                    <td bgcolor="#ffffff" style="padding:5px 20px 0 20px;">
+                                        <table border="0" align="left" cellpadding="0" cellspacing="0" class="logo pr-footer">
+                                            <tr>
+                                                <td align="center" class="pr-footer">
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <table border="0" align="left" cellpadding="0" cellspacing="0" class="logo pr-footer">
+                                            <tr>
+                                                <td align="left" class="pr-footer">
+                                                    <a href="http://payg.in" target="_blank" style="display: block; border-style: none !important; border: 0 !important;" class="agile"><img width="150" height="50" border="0" style="display: block;" src="https://uat.payg.in/merchant/assets/img/PayG%20Logo%205.svg" alt="logo" /></a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <table border="0" align="right" cellpadding="0" cellspacing="0" class="nav  text-center">
+                                            <tr><td height="15"></td></tr>
+                                            <tr>
+                                                <td align="center" mc:edit="socials" style="font-size: 13px; font-family: Helvetica, Arial, sans-serif;">
+                                                    <table border="0" align="center" cellpadding="0" cellspacing="0">
+                                                        <tr>
+                                                            <td>
+                                                                <a style="display: block; width: 25px; border-style: none !important; border: 0 !important;" href="https://www.facebook.com/PayGIndia/" target="_blank"><img width="25" height="25" border="0" style="display: block;" src="https://uat.payg.in/merchant/assets/img/facebook.svg" alt="facebook" /></a>
+                                                            </td>
+                                                            <td>&nbsp;&nbsp;&nbsp;</td>
+                                                            <td>
+                                                                <a style="display: block; width: 25px; border-style: none !important; border: 0 !important;" href="https://twitter.com/PayGIndia " target="_blank"><img width="25" height="25" border="0" style="display: block;" src="https://uat.payg.in/merchant/assets/img/twitterx.svg" alt="twitter" /></a>
+                                                            </td>
+                                                            <td>&nbsp;&nbsp;&nbsp;</td>
+                                                            <td>
+                                                                <a style="display: block; width: 25px; border-style: none !important; border: 0 !important;" href="https://www.linkedin.com/company/pay-g" target="_blank"><img width="25" height="25" border="0" style="display: block;" src="https://uat.payg.in/merchant/assets/img/linkedin.svg" alt="linkdin" /></a>
+                                                            </td>
+                                                            <td>&nbsp;&nbsp;&nbsp;</td>
+                                                            <td>
+                                                                <a style="display: block; width: 25px; border-style: none !important; border: 0 !important;" href="https://www.instagram.com/paygindia/" target="_blank"><img width="25" height="25" border="0" style="display: block;" src="https://uat.payg.in/merchant/assets/img/insta.svg" alt="instagram" /></a>
+                                                            </td>
+                                                            <td>&nbsp;&nbsp;&nbsp;</td>
+                                                            <td>
+                                                                <a style="display: block; width: 25px; border-style: none !important; border: 0 !important;" href="https://www.youtube.com/channel/UCrdv2TlzgSDIIA7rFG-KLXw" target="_blank"><img width="25" height="25" border="0" style="display: block;" src="https://uat.payg.in/merchant/assets/img/youtube.svg" alt="youtube" /></a>
+                                                            </td>
+                                                            <td>&nbsp;&nbsp;&nbsp;</td>
+                                                            <td>
+                                                                <a style="display: block; width: 25px; border-style: none !important; border: 0 !important;" href="https://in.pinterest.com/paygindia/" target="_blank"><img width="25" height="25" border="0" style="display: block;" src="https://uat.payg.in/merchant/assets/img/pinterest.svg" alt="instagram" /></a>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <tr bgcolor="ffffff"><td height="20"></td></tr>
+                                <tr bgcolor="ffffff" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;  padding-top: 25px;">
+                                    <td align="center" style="padding-bottom: 10px;">
+                                        <b align="center">
+                                            *** THIS IS AN AUTO GENERATED EMAIL. PLEASE DO NOT REPLY ***
+                                        </b>
+
+                                    </td>
+                                </tr>
+
+
+
+
+                                <!-- <tr bgcolor="ffffff">
+                                    <td align=" center" mc:edit="copy11" style="color: #939393;padding-top: 10px; font-size: 14px; font-weight: normal; font-family: Helvetica, Arial, sans-serif;" class="prefooter-subheader">
+                                        <multiline style="color: #198fcf;">
+                                            <span style="color: #314c67">Email &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:</span>&nbsp; care@payg.in
+
+                                        </multiline>
+                                        <multiline style="color: #198fcf;">
+                                            <br />
+                                            <span style="color: #314c67">Website&nbsp; :</span>&nbsp; <a href="http://payg.in/" target="_blank" style="text-decoration:none;">www.payg.in</a>
+
+                                        </multiline>
+                                    </td>
+                                </tr> -->
+                                <!------------ end main Content ----------------->
+                                <!---------- footer  --------->
+
+                                <tr bgcolor="#007AFF">
+                                    <td mc:edit="copy12" align="center" style="color: #fff; font-size: 10px; font-weight: normal; font-family: Helvetica, Arial, sans-serif; padding: 15px 0;">
+                                        Powered By
+                                        <a style="color:#fff; text-decoration:none;" href="http://payg.in/" target="_blank">PayG</a> © Copyright 2024 . All Rights Reserved
+
+                                    </td>
+                                </tr>
+
+
+
+                                <!---------  end footer --------->
+
+                                <!--<tr>
+                                    <td height="35" mc:edit="space">&nbsp;</td>
+                                </tr>-->
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+</body>
+
+</html>
+
+<!-- #### footer #### -->
+<!--<table bgcolor="#efefef" align="center" border="0" cellpadding="0" cellspacing="0" class="scale" data-thumb="#" width="100%" mc:variant="Intro8386" mc:repeatable="Intro8386">
+
+
+    <table bgcolor="#ffffff" border="0" width="700" cellpadding="0" cellspacing="0" align="center" class="container">
+        <tr>
+            <td bgcolor="#ffffff" style="padding:5px 20px 0 20px;">-->
+                <!--<table border="0" align="left" cellpadding="0" cellspacing="0" class="logo pr-footer">
+                    <tr>
+                        <td align="center" class="pr-footer">
+                            <a href="http://payg.in" target="_blank" style="display: block; border-style: none !important; border: 0 !important;" class="agile"><img width="150" height="50" border="0" style="display: block;" src="https://payg.in/assets/img/black-logo.png" alt="logo" /></a>
+                        </td>
+                    </tr>
+                </table>-->
+                <!--<table border="0" align="left" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td height="20" width="20"></td>
+                    </tr>
+                </table>
+
+            </td>
+
+        </tr>
+
+    </table>
+
+    </body>
+    </html>
+</table>-->

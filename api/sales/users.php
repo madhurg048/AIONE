@@ -61,6 +61,34 @@ if (method() === 'GET') {
     ]);
 }
 
+if (method() === 'POST' && isset($_GET['bulk'])) {
+    // Bulk employee upload (CSV rows parsed client-side). Each row is validated and
+    // submitted independently; one bad row never sinks the batch. HR-tier callers'
+    // rows queue for HR Head approval exactly like single adds (hr_submit).
+    $rows = (array)(body()['rows'] ?? []);
+    if (!$rows) fail('rows required');
+    if (count($rows) > 500) fail('Max 500 rows per upload');
+    $results = [];
+    foreach ($rows as $i => $row) {
+        $label = trim((string)($row['full_name'] ?? '')) ?: ('row ' . ($i + 1));
+        $GLOBALS['PAYG_FAIL_THROWS'] = true;
+        try {
+            $p = people_normalize_payload($db, (array)$row, null);
+            assert_may_set_role($p['role'], null);
+            $res = hr_submit($db, 'person.create', $p,
+                "Bulk add {$p['full_name']}" . ($p['role'] ? ' (' . payg_role_label($p['role']) . ')' : ''), $p['full_name']);
+            $results[] = ['row' => $i + 1, 'name' => $label, 'ok' => true,
+                          'queued' => !empty($res['queued'])];
+        } catch (Throwable $e) {
+            $results[] = ['row' => $i + 1, 'name' => $label, 'ok' => false, 'error' => $e->getMessage()];
+        } finally {
+            $GLOBALS['PAYG_FAIL_THROWS'] = false;
+        }
+    }
+    $okCnt = count(array_filter($results, fn($r) => $r['ok']));
+    ok(['results' => $results, 'created' => $okCnt, 'failed' => count($results) - $okCnt]);
+}
+
 if (method() === 'POST') {
     $b = body();
     $p = people_normalize_payload($db, $b, null);
@@ -94,6 +122,8 @@ if (method() === 'PATCH' || method() === 'PUT') {
         'email'          => $emp['email'],
         'phone'          => $emp['phone'],
         'manager_id'     => $emp['manager_id'],
+        'emp_type'       => $emp['emp_type'] ?? 'employee',
+        'governance'     => $emp['governance'] ?? 'execution',
         'username'       => $login['username'] ?? '',
         'role'           => $login['role'] ?? '',
         'is_active'      => $login['is_active'] ?? 1,
@@ -114,6 +144,7 @@ if (method() === 'PATCH' || method() === 'PUT') {
 }
 
 if (method() === 'DELETE') {
+    if (current_role() !== 'admin') fail('Only an Admin can delete or deactivate user accounts', 403);
     $id = (int)($_GET['id'] ?? 0);
     if (!$id) fail('id required');
     if ($id === people_me()) fail("You can't deactivate your own account", 400);

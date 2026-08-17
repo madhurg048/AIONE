@@ -32,6 +32,7 @@ sales_header($me, 'Sales · KPA / KRA');
 sales_nav('kpa');
 ?>
 <main class="p-2 space-y-2">
+  <div class="flex items-center gap-2 px-2 pt-2"><span class="text-[10px] bg-white border rounded-lg px-2 py-1 text-gray-600">Appraisal Cycle: <b>FY 2026-27</b> (Apr – Mar)</span><span class="text-[9px] bg-green-100 text-green-700 rounded-full px-2 py-0.5 font-semibold">OPEN</span></div>
 
   <div class="card p-3">
     <div class="flex items-center justify-between">
@@ -351,3 +352,4 @@ boot();
 </script>
 </body>
 </html>
+

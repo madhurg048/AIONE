@@ -10,6 +10,7 @@
  */
 require_once __DIR__ . '/_bootstrap.php';
 require_login();
+require_module('incentives');
 $db = db();
 
 /* Approve/pay/bulk-approve/bulk-pay are manager/admin-only: a sales_exec must never

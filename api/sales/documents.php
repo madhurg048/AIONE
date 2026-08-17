@@ -30,7 +30,13 @@ const DOC_BLOCKED_EXT = ['php','php3','php4','php5','phtml','phar','exe','bat','
 
 function doc_root(): string
 {
-    $dir = __DIR__ . '/../../data/documents';
+    // Files here are only ever served back through this endpoint (login-gated),
+    // never by a direct URL — so the directory does not have to live under the
+    // web root. On Azure App Service set DOC_STORAGE_PATH=/home/data/documents:
+    // /home is the only persistent, writable mount, and wwwroot is read-only
+    // whenever the app is deployed with WEBSITE_RUN_FROM_PACKAGE.
+    $dir = env('DOC_STORAGE_PATH') ?: (__DIR__ . '/../../data/documents');
+    $dir = rtrim($dir, '/\\');
     if (!is_dir($dir)) {
         @mkdir($dir, 0775, true);
         // belt & braces for Apache deployments: never serve or execute from here directly

@@ -163,18 +163,78 @@ let dzTimer;
 }));
 dz.addEventListener('drop', e=>{ uploadFiles(e.dataTransfer.files); });
 
-/* ---------- folder ops ---------- */
-async function newFolder(){
-  const name = prompt('Folder name:',''); if (!name) return;
-  const res = await apiSend('documents.php', { name });
-  if (res.success){ toast('Folder created'); loadTree(false).then(()=>openFolder(res.data.id, true)); }
-  else toast(res.error||'Failed', false);
+/* ---------- folder ops (Windows-Explorer-style inline editing) ---------- */
+function nextFolderName(){
+  const names = new Set(FOLDERS.map(f=>f.name));
+  if (!names.has('New folder')) return 'New folder';
+  let i = 2; while (names.has(`New folder (${i})`)) i++;
+  return `New folder (${i})`;
 }
-async function renameFolder(){
-  const name = prompt('New name:', CUR.name); if (!name || name===CUR.name) return;
-  const res = await apiSend('documents.php?folder='+CUR.id, { name }, 'PATCH');
-  if (res.success){ toast('Renamed'); openFolder(CUR.id, true); loadTree(true); } else toast(res.error||'Failed', false);
+function newFolder(){
+  const existing = document.getElementById('nfRow');
+  if (existing){ existing.querySelector('input').focus(); return; }
+  const row = document.createElement('div');
+  row.id = 'nfRow';
+  row.className = 'flex items-center gap-2 px-2 py-1.5 rounded text-xs bg-indigo-50';
+  row.innerHTML = `<i class="fa-solid fa-folder text-amber-400"></i>
+    <input class="flex-1 min-w-0 border border-indigo-400 rounded px-1.5 py-0.5 text-xs outline-none bg-white" value="${esc(nextFolderName())}">`;
+  // slot the editor right under the "My folders" heading, like Explorer does
+  const sec = document.getElementById('folderSections');
+  let anchor = null;
+  for (const d of sec.querySelectorAll('div')){ if (d.textContent.trim() === 'My folders'){ anchor = d; break; } }
+  if (anchor) anchor.after(row); else sec.prepend(row);
+  const inp = row.querySelector('input');
+  inp.focus(); inp.select();
+  let done = false;
+  const commit = async () => {
+    if (done) return; done = true;
+    const name = inp.value.trim();
+    row.remove();
+    if (!name) return;                      // empty name = cancel, like Esc
+    const res = await apiSend('documents.php', { name });
+    if (res.success){ await loadTree(false); openFolder(res.data.id, true); }
+    else toast(res.error||'Failed', false);
+  };
+  const cancel = () => { if (done) return; done = true; row.remove(); };
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter'){ e.preventDefault(); commit(); }
+    else if (e.key === 'Escape'){ cancel(); }
+  });
+  inp.addEventListener('blur', commit);     // click-away keeps the typed name, like Windows
 }
+function renameFolder(){
+  if (!CUR) return;
+  const row = document.querySelector(`.folder-row[data-fid="${CUR.id}"]`);
+  if (!row) return;
+  const span = row.querySelector('span.flex-1');
+  if (!span || span.querySelector('input')) return;
+  const old = CUR.name;
+  span.innerHTML = `<input class="w-full min-w-0 border border-indigo-400 rounded px-1 py-0.5 text-xs outline-none bg-white" value="${esc(old)}">`;
+  const inp = span.querySelector('input');
+  // the row is a link — keep clicks inside the editor from re-opening the folder
+  ['click','mousedown','dblclick'].forEach(ev => inp.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); }));
+  inp.focus(); inp.select();
+  let done = false;
+  const commit = async () => {
+    if (done) return; done = true;
+    const name = inp.value.trim();
+    if (!name || name === old){ loadTree(true); return; }
+    const res = await apiSend('documents.php?folder='+CUR.id, { name }, 'PATCH');
+    if (res.success){ await loadTree(false); openFolder(CUR.id, true); }
+    else { toast(res.error||'Failed', false); loadTree(true); }
+  };
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter'){ e.preventDefault(); commit(); }
+    else if (e.key === 'Escape'){ done = true; loadTree(true); }
+  });
+  inp.addEventListener('blur', commit);
+}
+// F2 renames the selected folder, just like Explorer
+document.addEventListener('keydown', e => {
+  const el = document.activeElement;
+  const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
+  if (e.key === 'F2' && !typing && CUR && (CUR.is_mine || IS_ADMIN)){ e.preventDefault(); renameFolder(); }
+});
 async function deleteFolder(){
   if (!confirm('Delete this folder? It must be empty.')) return;
   const res = await apiSend('documents.php?folder='+CUR.id, {}, 'DELETE');

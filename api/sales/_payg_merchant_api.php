@@ -10,15 +10,23 @@
  *      with clientid/clientsecret/scope -> short-lived Bearer access_token (~30 min).
  *   2) POST MerchantOnboarding with that token as "Authorization: Bearer <token>".
  */
-if (!defined('PAYG_MERCHANT_API_URL'))  define('PAYG_MERCHANT_API_URL', 'https://devapi.payg.in/merchant/api/Merchantlevel/MerchantOnboarding');
-if (!defined('PAYG_TOKEN_API_URL'))     define('PAYG_TOKEN_API_URL', 'https://devapi.payg.in/merchant/api/Merchantlevel/GetAuthToken');
-if (!defined('PAYG_CLIENT_ID'))         define('PAYG_CLIENT_ID', 'payg.xsilica@paygdigitals.com');
-if (!defined('PAYG_CLIENT_SECRET'))     define('PAYG_CLIENT_SECRET', 'payg.xsilica@1234');
-if (!defined('PAYG_CLIENT_SCOPE'))      define('PAYG_CLIENT_SCOPE', 'CRM:MerchantCreation');
+require_once __DIR__ . '/../../config/env.php';
+
+if (!defined('PAYG_MERCHANT_API_URL'))  define('PAYG_MERCHANT_API_URL', env('PAYG_MERCHANT_API_URL', 'https://devapi.payg.in/merchant/api/Merchantlevel/MerchantOnboarding'));
+if (!defined('PAYG_TOKEN_API_URL'))     define('PAYG_TOKEN_API_URL', env('PAYG_TOKEN_API_URL', 'https://devapi.payg.in/merchant/api/Merchantlevel/GetAuthToken'));
+if (!defined('PAYG_CLIENT_ID'))         define('PAYG_CLIENT_ID', env('PAYG_CLIENT_ID', ''));
+if (!defined('PAYG_CLIENT_SECRET'))     define('PAYG_CLIENT_SECRET', env('PAYG_CLIENT_SECRET', ''));
+if (!defined('PAYG_CLIENT_SCOPE'))      define('PAYG_CLIENT_SCOPE', env('PAYG_CLIENT_SCOPE', 'CRM:MerchantCreation'));
 
 /** Fetches a fresh Bearer access token. Returns null on failure (network/credentials). */
 function payg_get_token(): ?string
 {
+    // Credentials come from the environment now — no point round-tripping without them.
+    if (PAYG_CLIENT_ID === '' || PAYG_CLIENT_SECRET === '') {
+        error_log('PayG merchant API: PAYG_CLIENT_ID / PAYG_CLIENT_SECRET not set in the environment');
+        return null;
+    }
+
     $ch = curl_init(PAYG_TOKEN_API_URL);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,

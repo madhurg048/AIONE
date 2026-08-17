@@ -14,8 +14,12 @@ require_once __DIR__ . '/_bootstrap.php';
 require_login();
 $db = db();
 
-/* -------- VALUES -------- (any logged-in user may read/save values on a record they can see) */
+/* -------- VALUES -------- (any logged-in user may read/save values on a record they can see;
+   EMPLOYEE values are HR data, so they take the same 'people' capability as users.php) */
 if (isset($_GET['values'])) {
+    if (($_GET['entity'] ?? (body()['entity'] ?? '')) === 'employee') {
+        require_cap('people', 'employee custom fields');
+    }
     if (method() === 'GET') {
         $entity = $_GET['entity'] ?? ''; $eid = (int)($_GET['entity_id'] ?? 0);
         $s = $db->prepare("SELECT f.field_key, v.value

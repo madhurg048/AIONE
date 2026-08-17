@@ -40,9 +40,85 @@ function otp_http(string $method, string $url, array $headers = [], $body = null
     return [$code, $errno ? null : (string)$resp, $errno ? curl_strerror($errno) : null];
 }
 
-/** Send $code to $phone via the configured Indian SMS provider. Returns [ok, detail]. */
-function otp_sms_dispatch(array $cfg, string $phone, string $code): array
+/**
+ * Resolve the best message template: app-specific purpose > app generic >
+ * global purpose > global 'generic'. Returns the template row or null.
+ */
+function otp_resolve_template(PDO $db, ?int $appId, string $purpose, string $channel): ?array
 {
+    $tries = [];
+    if ($appId) { $tries[] = [$appId, $purpose]; $tries[] = [$appId, 'generic']; }
+    $tries[] = [null, $purpose];
+    $tries[] = [null, 'generic'];
+    foreach ($tries as [$aid, $p]) {
+        $s = $db->prepare("SELECT * FROM message_templates
+                            WHERE channel=? AND purpose=? AND is_active=1 AND " . ($aid ? "app_id=?" : "app_id IS NULL") . "
+                            ORDER BY id DESC LIMIT 1");
+        $s->execute($aid ? [$channel, $p, $aid] : [$channel, $p]);
+        if ($row = $s->fetch(PDO::FETCH_ASSOC)) return $row;
+    }
+    return null;
+}
+
+/**
+ * Render a DLT template: named placeholders first ({#otp#}, {#minutes#}, {#name#}…),
+ * then positional {#var#} filled left-to-right from $seq.
+ */
+function otp_render_template(string $content, array $named, array $seq = []): string
+{
+    foreach ($named as $k => $v) $content = str_ireplace('{#' . $k . '#}', (string)$v, $content);
+    foreach ($seq as $v) {
+        $pos = stripos($content, '{#var#}');
+        if ($pos === false) break;
+        $content = substr_replace($content, (string)$v, $pos, strlen('{#var#}'));
+    }
+    return str_ireplace('{#var#}', '', $content);   // any leftover vars blank out
+}
+
+/** Raw SMS via the configured gateway (any message, not just OTPs). Returns [ok, detail]. */
+function sms_send_raw(array $cfg, string $phone, string $message, ?string $senderId = null): array
+{
+    $digits = preg_replace('/\D+/', '', $phone);
+    if (strlen($digits) === 10) $digits = '91' . $digits;
+    $sender = $senderId ?: ($cfg['sms_sender_id'] ?: 'PAYGin');
+    switch ($cfg['sms_provider'] ?? 'hspsms') {
+        case 'hspsms': {
+            // the client's gateway: GET sms.hspsms.com/sendSMS (see Email and Template Code.txt)
+            $url = 'http://sms.hspsms.com/sendSMS?' . http_build_query([
+                'username' => $cfg['sms_username'] ?: '', 'message' => $message,
+                'sendername' => $sender, 'smstype' => 'TRANS',
+                'numbers' => $digits, 'apikey' => $cfg['sms_api_key'] ?: '']);
+            [$http, $body, $err] = otp_http('GET', $url);
+            $ok = $http >= 200 && $http < 300 && stripos((string)$body, 'invalidnumber') === false;
+            return [$ok, 'hspsms HTTP ' . $http . ' ' . substr((string)($body ?? $err), 0, 160)];
+        }
+        case 'textlocal': {
+            [$http, $body] = otp_http('POST', 'https://api.textlocal.in/send/', [],
+                http_build_query(['apikey' => $cfg['sms_api_key'] ?: '', 'numbers' => $digits,
+                    'sender' => $sender, 'message' => $message]));
+            $j = json_decode((string)$body, true) ?: [];
+            return [$http === 200 && (($j['status'] ?? '') === 'success'), 'textlocal HTTP ' . $http];
+        }
+        case 'custom': {
+            $tpl = trim((string)($cfg['sms_custom_url'] ?? ''));
+            if ($tpl === '') return [false, 'Custom SMS URL not configured'];
+            $url = str_replace(['{phone}', '{otp}', '{message}', '{key}'],
+                [$digits, rawurlencode($message), rawurlencode($message), rawurlencode($cfg['sms_api_key'] ?: '')], $tpl);
+            [$http, $body, $err] = otp_http('GET', $url);
+            return [$http >= 200 && $http < 300, 'custom HTTP ' . $http . ' ' . substr((string)($body ?? $err), 0, 160)];
+        }
+    }
+    return [false, 'Provider ' . ($cfg['sms_provider'] ?? '?') . ' supports OTP-only sends'];
+}
+
+/** Send $code to $phone via the configured Indian SMS provider. Returns [ok, detail]. */
+function otp_sms_dispatch(array $cfg, string $phone, string $code, ?string $message = null, ?string $senderId = null): array
+{
+    // template-rendered message (or raw-message providers) go through the generic gateway
+    if ($message !== null || in_array($cfg['sms_provider'] ?? '', ['hspsms', 'textlocal', 'custom'], true)) {
+        $msg = $message ?? "Your PayG verification code is $code. Valid for {$cfg['otp_expiry_minutes']} minutes. Do not share it.";
+        return sms_send_raw($cfg, $phone, $msg, $senderId);
+    }
     $key = trim((string)($cfg['sms_api_key'] ?? ''));
     $provider = $cfg['sms_provider'] ?? 'msg91';
     $digits = preg_replace('/\D+/', '', $phone);
@@ -96,7 +172,7 @@ function otp_sms_dispatch(array $cfg, string $phone, string $code): array
  * Generate + dispatch an OTP. Returns [ok, message, otpRowId].
  * Never returns the code itself.
  */
-function otp_send(PDO $db, string $channel, string $recipient, string $purpose = 'generic', string $via = 'api'): array
+function otp_send(PDO $db, string $channel, string $recipient, string $purpose = 'generic', string $via = 'api', ?array $app = null): array
 {
     if (!in_array($channel, ['email', 'sms', 'whatsapp'], true)) return [false, 'channel must be email|sms|whatsapp', 0];
     $recipient = trim($recipient);
@@ -129,17 +205,41 @@ function otp_send(PDO $db, string $channel, string $recipient, string $purpose =
        ->execute([$channel, $recipient, password_hash($code, PASSWORD_DEFAULT), $purpose, $expMin, substr($via, 0, 40)]);
     $id = (int)$db->lastInsertId();
 
-    $msg = "Your PayG verification code is $code. Valid for $expMin minutes. Do not share it with anyone.";
+    // per-app / per-purpose DLT template (falls back to the built-in wording)
+    $named = ['otp' => $code, 'minutes' => $expMin, 'code' => $code, 'app' => $app['app_name'] ?? 'PayG'];
+    $tplSms = otp_resolve_template($db, $app['id'] ?? null, $purpose, 'sms');
+    $msg = $tplSms && $channel !== 'email'
+        ? otp_render_template($tplSms['content'], $named, [$code, $expMin])
+        : "Your PayG verification code is $code. Valid for $expMin minutes. Do not share it with anyone.";
+    $smsSender = ($tplSms['sender_header'] ?? null) ?: ($app['sms_sender_id'] ?? null);
+
     $ok = false; $detail = '';
     try {
         switch ($channel) {
-            case 'email':
-                $ok = sendCrmEmail($recipient, 'User', 'Your PayG verification code',
-                    "<p style='font-size:15px'>Your PayG verification code is</p>"
+            case 'email': {
+                $tplEm = otp_resolve_template($db, $app['id'] ?? null, $purpose, 'email');
+                $subject = ($tplEm['subject'] ?? null) ?: 'Your PayG verification code';
+                $html = $tplEm
+                    ? otp_render_template($tplEm['content'], $named, [$code, $expMin])
+                    : "<p style='font-size:15px'>Your PayG verification code is</p>"
                     . "<p style='font-size:28px;font-weight:bold;letter-spacing:6px'>$code</p>"
-                    . "<p>Valid for $expMin minutes. Do not share it with anyone.</p>", $msg);
-                $detail = $ok ? 'smtp ok' : 'smtp failed (check Settings → Email)';
+                    . "<p>Valid for $expMin minutes. Do not share it with anyone.</p>";
+                // the app's own sender account (email_servers) beats the default SMTP config
+                $server = null;
+                if (!empty($app['email_server_id'])) {
+                    $s = $db->prepare("SELECT * FROM email_servers WHERE id=? AND is_active=1 AND smtp_host IS NOT NULL AND smtp_host<>''");
+                    $s->execute([(int)$app['email_server_id']]);
+                    $server = $s->fetch(PDO::FETCH_ASSOC) ?: null;
+                }
+                if ($server) {
+                    [$ok, $m] = crm_smtp_send($server, $recipient, 'User', $subject, $html, strip_tags($html));
+                    $detail = $ok ? 'smtp ok (' . $server['name'] . ')' : 'smtp failed: ' . $m;
+                } else {
+                    $ok = sendCrmEmail($recipient, 'User', $subject, $html, strip_tags($html));
+                    $detail = $ok ? 'smtp ok' : 'smtp failed (check Settings → Email)';
+                }
                 break;
+            }
             case 'whatsapp': {
                 $wa = wa_settings($db);
                 if (!$wa || empty($wa['enabled']) || empty($wa['api_token']) || empty($wa['phone_number_id'])) {
@@ -153,7 +253,7 @@ function otp_send(PDO $db, string $channel, string $recipient, string $purpose =
                 break;
             }
             case 'sms':
-                [$ok, $detail] = otp_sms_dispatch($cfg, $recipient, $code);
+                [$ok, $detail] = otp_sms_dispatch($cfg, $recipient, $code, $tplSms ? $msg : null, $smsSender);
                 break;
         }
     } catch (Throwable $e) { $ok = false; $detail = 'dispatch error: ' . substr($e->getMessage(), 0, 120); }

@@ -41,8 +41,8 @@ if (method() === 'GET' && isset($_GET['settings'])) {
 if (method() === 'POST' && isset($_GET['settings'])) {
     $b = body();
     $set = []; $args = [];
-    if (isset($b['sms_provider']) && in_array($b['sms_provider'], ['msg91','fast2sms','textlocal','custom'], true)) { $set[] = "sms_provider=?"; $args[] = $b['sms_provider']; }
-    foreach (['sms_sender_id' => 20, 'sms_template_id' => 100, 'sms_custom_url' => 500] as $f => $len) {
+    if (isset($b['sms_provider']) && in_array($b['sms_provider'], ['hspsms','msg91','fast2sms','textlocal','custom'], true)) { $set[] = "sms_provider=?"; $args[] = $b['sms_provider']; }
+    foreach (['sms_sender_id' => 20, 'sms_template_id' => 100, 'sms_custom_url' => 500, 'sms_username' => 80] as $f => $len) {
         if (array_key_exists($f, $b)) { $set[] = "$f=?"; $args[] = ($b[$f] === '' ? null : substr((string)$b[$f], 0, $len)); }
     }
     // only overwrite the key when a new one is typed (blank = keep existing)

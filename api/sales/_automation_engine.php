@@ -109,13 +109,89 @@ function automation_rr_scope(?string $vertical): string
  * Returns ['id'=>int,'name'=>string] or null when no exec is eligible — callers must surface
  * that rather than reporting a successful assignment.
  */
+/** Team-lead switch for lead auto-assignment (phase60). Row id=1 always exists. */
+function lead_assign_settings(PDO $db): array
+{
+    static $c = null;
+    if ($c !== null) return $c;
+    try {
+        $row = $db->query("SELECT auto_assign, group_id FROM lead_assign_settings WHERE id=1")->fetch(PDO::FETCH_ASSOC);
+        return $c = $row ?: ['auto_assign' => 0, 'group_id' => null];
+    } catch (Throwable $e) { return $c = ['auto_assign' => 0, 'group_id' => null]; }
+}
+
+/**
+ * Reads the live "Reassign stale leads" rule's own conditions (days + which statuses count as
+ * idle) so the UI warning shown to a non-technical rep/manager always matches whatever the rule
+ * actually does — instead of a second hardcoded number that could silently drift out of sync
+ * if someone edits the rule later. Falls back to the documented default (14 days, new/contacted)
+ * if the rule is missing/disabled/malformed, so the badge never hard-fails the leads list.
+ */
+function lead_stale_threshold(PDO $db): array
+{
+    static $c = null;
+    if ($c !== null) return $c;
+    $default = ['days' => 14, 'statuses' => ['new', 'contacted'], 'active' => false];
+    try {
+        $rows = $db->query("SELECT conditions FROM automation_rules
+                             WHERE entity='lead' AND trigger_event='time_based' AND is_active=1
+                               AND actions LIKE '%assign_owner%'")->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($rows as $raw) {
+            $conds = json_decode($raw, true) ?: [];
+            $days = null; $statuses = null;
+            foreach ($conds as $c2) {
+                if (($c2['field'] ?? '') === 'updated_at' && ($c2['op'] ?? '') === 'older_than_days') {
+                    $days = (int)($c2['value'] ?? 0);
+                }
+                if (($c2['field'] ?? '') === 'lead_status' && ($c2['op'] ?? '') === 'in') {
+                    $statuses = array_map('trim', explode(',', (string)($c2['value'] ?? '')));
+                }
+            }
+            if ($days && $statuses) {
+                return $c = ['days' => $days, 'statuses' => $statuses, 'active' => true];
+            }
+        }
+    } catch (Throwable $e) { /* fall through to default */ }
+    return $c = $default;
+}
+
+/**
+ * The member of the pool group with the FEWEST open leads (new/contacted/qualified),
+ * among active logins. Ties go to the lower employee id — deterministic, and with equal
+ * loads it degrades to a stable rotation as counts leapfrog each other.
+ */
+function lead_lowest_occupied(PDO $db, int $groupId): ?int
+{
+    $s = $db->prepare("SELECT e.id,
+                              (SELECT COUNT(*) FROM leads l
+                                WHERE l.owner_id = e.id
+                                  AND l.lead_status IN ('new','contacted','qualified')) AS open_leads
+                         FROM emp_group_members m
+                         JOIN employees e ON e.id = m.employee_id
+                         JOIN sales_users su ON su.employee_id = e.id AND su.is_active = 1
+                        WHERE m.group_id = ?
+                        ORDER BY open_leads ASC, e.id ASC
+                        LIMIT 1");
+    $s->execute([$groupId]);
+    $id = $s->fetchColumn();
+    return $id ? (int)$id : null;
+}
+
 function sales_assign_next(PDO $db, ?int $leadId, ?int $ticketId = null, ?string $vertical = 'sales'): ?array
 {
     // Service tickets stay unassigned by design (the whole Service team sees them via
     // tickets.php's vertical scope and claims them) — only sales enquiries get an owner.
     if ($vertical !== 'sales') return null;
 
-    $ownerId = automation_round_robin($db, automation_rr_scope('sales'), 'all', 'sales');
+    // Team-lead controlled pool: when auto-assign is ON, the lead goes to the group
+    // member with the fewest open leads. Otherwise the legacy shared rotation runs
+    // (this path serves web/chat leads, which have no human creator to fall back to).
+    $cfg = lead_assign_settings($db);
+    $ownerId = null;
+    if (!empty($cfg['auto_assign']) && !empty($cfg['group_id'])) {
+        $ownerId = lead_lowest_occupied($db, (int)$cfg['group_id']);
+    }
+    if (!$ownerId) $ownerId = automation_round_robin($db, automation_rr_scope('sales'), 'all', 'sales');
     if (!$ownerId) return null;
 
     $nm = $db->prepare("SELECT full_name FROM employees WHERE id=?");

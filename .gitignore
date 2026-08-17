@@ -1,43 +1,87 @@
-# Environment / secrets. Only .env.example belongs in git.
+# =============================================================================
+# PayG CRM — .gitignore
+# =============================================================================
+
+# ---- Secrets ---------------------------------------------------------------
+# .env holds live DB/Exotel/PIMS credentials. .env.example IS committed.
 .env
 .env.*
 !.env.example
 
-# SQL dumps contain live data + integration secrets (telephony/WhatsApp/email API keys) — never commit
+# Any TLS material / keys that get dropped next to the app.
+*.pem
+*.key
+*.p12
+*.pfx
+# NOTE: `certs/*`, not `certs/` — git cannot re-include a file inside an
+# excluded *directory*, so the .gitkeep negation below would never fire.
+certs/*
+!certs/.gitkeep
+
+# ---- Live data dumps -------------------------------------------------------
+# SQL dumps contain real customer data + integration secrets. The schema
+# migrations under database/migrations/ ARE committed — the dumps are not.
 database/*.sql
 database/backups/
+database/seeds/*.sql
+*.sql.gz
+*.dump
 
-# Runtime artifacts
-data/uploads/
+# ---- Credential / client documents -----------------------------------------
+# PayG_CRM_Logins.xlsx contains real usernames + passwords.
+PayG_CRM_Logins.xlsx
+*.xlsx
+*.xls
+
+# ---- Runtime-generated user content ----------------------------------------
+# Keep the directories, drop their contents (uploaded KYC docs, chat media...).
+data/uploads/*
+!data/uploads/.gitkeep
+data/documents/*
+!data/documents/index.html
+!data/documents/.htaccess
+!data/documents/.gitkeep
+# Legacy top-level upload dir only — anchored with a leading slash so it does
+# NOT also match data/uploads/ and kill the negations above.
+/uploads/
+
+# ---- Logs & temp -----------------------------------------------------------
 logs/
 *.log
+LogFiles/
+*.tmp
+*.bak
+*.orig
+*.rej
+*~
+*.zip
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-Thumbs.db
-.DS_Store
-
-# One-shot scripts (should not be deployed)
+# ---- Dev-only / dangerous scripts ------------------------------------------
+# None of these authenticate. production-wipe-keep-admin.php?confirm=yes
+# truncates leads/deals/merchants/tickets to anyone who can reach it.
+# They must never exist on the production host.
+setup.php
+sales-setup.php
 create-users.php
 create-dept-managers.php
-create-service-sample-data.php
 create-service-users.php
-sales-setup.php
-setup.php
+create-service-sample-data.php
+seed-chat.php
+seed-legal.php
 reset-dev-passwords.php
-production-wipe-keep-admin.php
 production-cutover.php
+production-wipe-keep-admin.php
+simulate-incoming-call.php
+scripts/wa-demo-tunnel.php
 
-# Debug / build artifacts
-*.zip
-big_body.json
-resp_long.json
-resp_retest.json
-
-# Claude Code local state
-.claude/
+# ---- Tooling / OS noise ----------------------------------------------------
+vendor/
+node_modules/
+composer.lock
+package-lock.json
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.code-workspace

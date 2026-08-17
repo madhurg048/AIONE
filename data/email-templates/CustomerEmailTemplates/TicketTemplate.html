@@ -1,0 +1,256 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Train Ticket Confirmation</title>
+</head>
+
+<body style="font-family: Arial, Helvetica, sans-serif; background:#f2f4f7; margin:0; padding:20px;">
+
+    <div style="max-width:750px;margin:auto;background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 8px 25px rgba(0,0,0,0.08);">
+
+        <!-- Header -->
+        <div style="background-color:#0b5394;padding:25px;text-align:center;color:white;">
+
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+
+                    <td align="left" style="border-radius:10px;padding:5px;width:50%;">
+                        <img src="https://developer.payg.in/assets/images/PayGlogoSVG1.svg"
+                             alt="PayG Logo"
+                             style="height:48px;">
+                    </td>
+
+                    <td align="right" style="border-radius:10px;padding:5px;width:50%;">
+                        <img src="https://www.irctc.co.in/nget/assets/images/logo.png"
+                             alt="IRCTC Logo"
+                             style="height:48px;">
+                    </td>
+
+                </tr>
+            </table>
+
+            <h2 style="margin-top:15px;color:white;">
+
+                Train Ticket Booking Confirmation
+            </h2>
+
+        </div>
+
+
+        <!-- Section -->
+        <div style="padding:25px;font-size:12px;line-height:1.6;">
+
+            <p>Dear <b>{{UserName}}</b>,</p>
+
+            <p>Thank you for booking your journey with us. Your ticket has been successfully confirmed.</p>
+
+            <div style="font-size:15px;font-weight:bold;color:#0b5394;margin-bottom:12px;border-left:4px solid #0b5394;padding-left:10px;">
+                Booking Information
+            </div>
+
+            <table style="width:100%;border-collapse:collapse;margin-top:10px;">
+
+                <tr>
+                    <td style="border:1px solid #e5e5e5;padding:10px;"><b>PNR Number</b></td>
+                    <td style="border:1px solid #e5e5e5;padding:10px;color:#1e88e5;font-weight:bold;">{{PNR}}</td>
+                </tr>
+
+                <tr>
+                    <td style="border:1px solid #e5e5e5;padding:10px;"><b>Transaction ID</b></td>
+                    <td style="border:1px solid #e5e5e5;padding:10px;">{{TransactionId}}</td>
+                </tr>
+
+                <tr>
+                    <td style="border:1px solid #e5e5e5;padding:10px;"><b>Train</b></td>
+                    <td style="border:1px solid #e5e5e5;padding:10px;">{{TrainNumber}} - {{TrainName}}</td>
+                </tr>
+
+                <tr>
+                    <td style="border:1px solid #e5e5e5;padding:10px;"><b>Class</b></td>
+                    <td style="border:1px solid #e5e5e5;padding:10px;">{{Class}}</td>
+                </tr>
+                <tr>
+                    <td style="border:1px solid #e5e5e5;padding:10px;"><b>Quota</b></td>
+                    <td style="border:1px solid #e5e5e5;padding:10px;">{{Quota}}</td>
+                </tr>
+
+                <tr>
+                    <td style="border:1px solid #e5e5e5;padding:10px;"><b>Date of Journey</b></td>
+                    <td style="border:1px solid #e5e5e5;padding:10px;">{{JourneyDate}}</td>
+                </tr>
+
+            </table>
+
+        </div>
+
+        <!-- Journey Details -->
+        <div style="padding:25px;font-size:12px;line-height:1.6;">
+
+            <div style="font-size:15px;font-weight:bold;color:#0b5394;margin-bottom:12px;border-left:4px solid #0b5394;padding-left:10px;">
+                Journey Details
+            </div>
+
+            <table style="width:100%;border-collapse:collapse;margin-top:10px;">
+
+                <tr style="background:#0b5394;color:white;">
+                    <th style="padding:10px;font-size:12px;">From</th>
+                    <th style="padding:10px;font-size:12px;">To</th>
+                    <th style="padding:10px;font-size:12px;">Boarding</th>
+                    <th style="padding:10px;font-size:12px;">Distance</th>
+                </tr>
+
+                <tr style="background:#fafafa;">
+                    <td style="border:1px solid #e5e5e5;padding:10px;">{{FromStation}}</td>
+                    <td style="border:1px solid #e5e5e5;padding:10px;">{{ToStation}}</td>
+                    <td style="border:1px solid #e5e5e5;padding:10px;">{{BoardingStation}}</td>
+                    <td style="border:1px solid #e5e5e5;padding:10px;">{{Distance}}</td>
+                </tr>
+
+            </table>
+
+        </div>
+
+        <!-- Passenger Details -->
+        <div style="padding:25px;font-size:12px;line-height:1.6;">
+
+            <div style="font-size:15px;font-weight:bold;color:#0b5394;margin-bottom:12px;border-left:4px solid #0b5394;padding-left:10px;">
+                Passenger Details
+            </div>
+
+            <table style="width:100%;border-collapse:collapse;margin-top:10px;">
+
+                <tr style="background:#0b5394;color:white;">
+                    <th style="padding:10px;">Name</th>
+                    <th style="padding:10px;">Age</th>
+                    <th style="padding:10px;">Gender</th>
+                    <th style="padding:10px;">Coach</th>
+                    <th style="padding:10px;">Seat</th>
+                    <th style="padding:10px;">Status</th>
+                    <th style="padding:10px;">Meal</th>
+                </tr>
+                <tr style="background:#fafafa;">
+                    <td style="border:1px solid #e5e5e5;padding:10px;">{{PassengerRows}}</td>
+                </tr>
+
+
+            </table>
+
+        </div>
+
+        <!-- Fare Summary -->
+        <div style="padding:25px;font-size:12px;line-height:1.6;">
+
+            <div style="font-size:15px;font-weight:bold;color:#0b5394;margin-bottom:12px;border-left:4px solid #0b5394;padding-left:10px;">
+                Fare Summary
+            </div>
+
+            <table style="width:100%;border-collapse:collapse;margin-top:10px;">
+
+                <tr>
+                    <td style="border:1px solid #e5e5e5;padding:10px;">Ticket Fare</td>
+                    <td style="border:1px solid #e5e5e5;padding:10px;">{{TicketFare}}</td>
+                </tr>
+
+                <tr>
+                    <td style="border:1px solid #e5e5e5;padding:10px;">Convenience Fee</td>
+                    <td style="border:1px solid #e5e5e5;padding:10px;">{{ConvenienceFee}}</td>
+                </tr>
+
+                <tr>
+                    <td style="border:1px solid #e5e5e5;padding:10px;">Travel Insurance</td>
+                    <td style="border:1px solid #e5e5e5;padding:10px;">{{Insurance}}</td>
+                </tr>
+
+                <tr>
+                    <td style="border:1px solid #e5e5e5;padding:10px;"><b>Total Amount</b></td>
+                    <td style="border:1px solid #e5e5e5;padding:10px;color:#1e88e5;font-weight:bold;">{{TotalFare}}</td>
+                </tr>
+
+
+
+            </table>
+
+        </div>
+        <div style="padding:25px; padding-top:10px; padding-bottom:10px; font-size:12px;line-height:1.6;">
+            <p><strong><b> *</b> Payment Gateway charges as applicable</strong></p>
+            </div>
+
+
+            <!-- Important -->
+            <div style="padding:25px;font-size:12px;line-height:1.6;">
+
+                <p><b>Important:</b></p>
+
+                <div style="background:#f7fbff;border:1px solid #dce8ff;border-radius:6px;padding:15px;margin-top:10px;">
+
+                    <ul style="padding-left:18px;">
+                        <li>Please carry a valid Government ID during travel.</li>
+                        <li>Keep a screenshot or SMS of your ticket.</li>
+                        <li>Ticket checking staff may verify your ticket and ID https://equery.irctc.co.in .</li>
+                        <li>
+                            Please take a screenshot of ERS i.e. Virtual Reservation Message(VRM) OF YOUR TICKET FROM YOUR
+                            Booked Tickets History page.
+                        </li>
+                        <li>This ticket is booked on a personal user ID and can not be sold by an agent.</li>
+                        <li>Passengers are advised not to carry inflammable/dangerous/explosive articles.</li>
+                    </ul>
+
+                </div>
+
+            </div>
+            <div style="padding:25px;font-size:12px;line-height:1.6;">
+
+                <p><b>Customer Care:</b></p>
+
+                <div style="background:#f7fbff;border:1px solid #dce8ff;border-radius:6px;padding:15px;margin-top:10px;">
+
+                    <ul style="padding-left:18px;margin:0;">
+
+                        <li>
+                            In case you require any further assistance ,please raise your query at
+                            https://equery.irctc.co.in or call us at 14646 / 08044647999 / 08035734999 (24*7 Hrs ; Language:
+                            Hindi or English).
+                        </li>
+
+                        <li>Just dial 139 from your landline, mobile & CDMA phones for railway enquiries.</li>
+
+                        <li>
+                            For any enquiries or information regarding your transaction with IRCTC, do not provide your
+                            credit/debit card details by any means to IRCTC. All your queries can be replied on the basis of
+                            15 digit IRCTC Transaction id / 10 digit PNR no. / User id. IRCTC does not store the
+                            credit/debit card information in any form during the transaction.
+                        </li>
+
+                    </ul>
+
+                </div>
+
+
+            </div>
+
+            <div style="padding:25px;font-size:12px;line-height:1.6;">
+
+                <p><strong>Please don't print unless extremely necessary.</strong></p>
+
+                <p>Warm Regards,</p>
+
+                <p style="margin-top:10px;">
+                    Customer Care<br>
+                    Internet Ticketing<br>
+                    PAYG-IRCTC
+                </p>
+
+            </div>
+
+            <!-- Footer -->
+            <div style="background:#f7f9fc;text-align:center;padding:18px;font-size:11px;color:#666;border-top:1px solid #eee;">
+                © {{Year}} Railway Reservation System. All rights reserved.
+            </div>
+
+        </div>
+
+</body>
+
+</html>

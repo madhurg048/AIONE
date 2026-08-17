@@ -75,6 +75,7 @@ function landing_for(string $role): string {
             'sales_exec'=>'sales-leads.php','service_exec'=>'sales-requests-service.php',
             'hr_head'=>'sales-hr.php','hr_manager'=>'sales-hr.php','hr'=>'sales-hr.php',
             'it'=>'sales-it.php','it_manager'=>'sales-it.php',
+            'cfo'=>'sales-cfo.php','finance_manager'=>'sales-cfo.php',
             'support'=>'sales-chat.php','support_manager'=>'sales-conversations.php'][$role] ?? 'sales-dashboard.php';
 }
 /**
@@ -110,6 +111,14 @@ if ($cnt === 0 && payg_sample_login_enabled()) {
 }
 
 $action = $_GET['action'] ?? 'me';
+
+// Current session's CSRF token (creating the session if the old one expired).
+// Lets a long-idle tab re-sync instead of dying with "CSRF validation failed":
+// the login page fetches this just before submitting, and js/sales.js retries
+// a failed write once with a fresh token. GET + no state change = safe to expose.
+if ($action === 'csrf') {
+    ok(['csrf' => payg_csrf_token()]);
+}
 
 if ($action === 'heartbeat') {
     if (empty($_SESSION['user'])) fail('Not authenticated', 401);
@@ -182,9 +191,32 @@ if ($action === 'login') {
     if ($u === '' || $p === '') fail('Username and password required');
     $ip = auth_client_ip();
     auth_guard_rate_limit($db, $u, $ip);
-    $s = $db->prepare("SELECT * FROM sales_users WHERE username=? AND is_active=1");
-    $s->execute([$u]);
-    $user = $s->fetch();
+    // One field, three identifiers: email (default), 10-digit phone, or plain
+    // username (kept for existing accounts + the dev sample buttons). Email/phone
+    // resolve through the linked employee; an ambiguous match (two employees on
+    // one phone) falls through to the username lookup and fails closed.
+    $user = null;
+    if (strpos($u, '@') !== false) {
+        $s = $db->prepare("SELECT su.* FROM sales_users su JOIN employees e ON e.id=su.employee_id
+                            WHERE LOWER(e.email)=LOWER(?) AND su.is_active=1 LIMIT 2");
+        $s->execute([$u]);
+        $rows = $s->fetchAll();
+        if (count($rows) === 1) $user = $rows[0];
+    } else {
+        $digits = preg_replace('/\D+/', '', $u);
+        if ($digits !== '' && strlen($digits) >= 8 && !preg_match('/[a-z]/i', $u)) {
+            $s = $db->prepare("SELECT su.* FROM sales_users su JOIN employees e ON e.id=su.employee_id
+                                WHERE RIGHT(REGEXP_REPLACE(COALESCE(e.phone,''), '[^0-9]', ''), 10)=? AND su.is_active=1 LIMIT 2");
+            $s->execute([substr($digits, -10)]);
+            $rows = $s->fetchAll();
+            if (count($rows) === 1) $user = $rows[0];
+        }
+    }
+    if (!$user) {
+        $s = $db->prepare("SELECT * FROM sales_users WHERE username=? AND is_active=1");
+        $s->execute([$u]);
+        $user = $s->fetch();
+    }
     if (!$user || !password_verify($p, $user['password_hash'])) {
         auth_record_failed_login($db, $u, $ip);
         fail('Invalid credentials', 401);

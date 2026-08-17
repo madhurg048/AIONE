@@ -31,7 +31,7 @@ sales_nav('compliance');
   <div class="card">
     <div class="overflow-x-auto"><table class="dense">
       <thead><tr>
-        <th>Title</th><th>Type</th><th>Category / Authority</th><th>Owner</th>
+        <th>Policy no.</th><th>Title</th><th>Type</th><th>Category / Authority</th><th>Owner</th>
         <th>Valid till</th><th>Days left</th><th>Renewal</th><th class="text-right">Stakeholders</th><th></th>
       </tr></thead>
       <tbody id="rows"></tbody>
@@ -47,6 +47,13 @@ sales_nav('compliance');
   </div>
 </div>
 
+<style>.gcode{font-family:ui-monospace,Consolas,monospace;font-size:10px;font-weight:700;background:#dcfce7;color:#166534;border-radius:5px;padding:1px 5px;white-space:nowrap}</style>
+<style>
+  .kstat { border:1px solid #e5e7eb; border-radius:10px; padding:8px 12px; background:#fff; min-width:138px; }
+  .kstat .kt { font-size:10px; color:#9ca3af; }
+  .kstat .kn { font-size:18px; font-weight:700; color:#1f2937; line-height:1.15; }
+  .kstat .ks { font-size:10px; color:#9ca3af; }
+</style>
 <?php sales_scripts(); ?>
 <script>
 let employees = [], groups = [], _t = null;
@@ -89,6 +96,7 @@ async function load(){
       : r.state==='expiring' ? `<b class="text-amber-600">${dl}d</b>`
       : `${dl}d`;
     return `<tr class="${r.state==='expired'?'bg-red-50/50':r.state==='expiring'?'bg-amber-50/40':''}">
+      <td><span class="gcode">${esc(r.policy_no||('POL-'+r.id))}</span><span class="text-[9px] text-gray-400 ml-1">v${r.version||1}</span></td>
       <td class="font-medium"><a href="javascript:viewItem(${r.id})" class="text-indigo-600 hover:underline">${esc(r.title)}</a>
         ${r.reference_no?`<div class="text-[10px] text-gray-400">${esc(r.reference_no)}</div>`:''}</td>
       <td>${badge(tl,tc)}</td>

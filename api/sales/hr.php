@@ -14,8 +14,11 @@
 require_once __DIR__ . '/_bootstrap.php';
 require_once __DIR__ . '/_hr_approvals.php';
 require_login();
-if (!payg_is_hr_role(current_role())
-    && !in_array(current_role(), ['admin', 'manager', 'sales_head', 'service_manager'], true)) {
+// The HR dashboard is org-wide by design (headcount, all timesheets, the approval
+// queue) — that breadth is HR's FUNCTION, so access is HR roles + admin + Board only.
+// Dept managers/heads get their team's numbers from timesheet-compliance.php instead.
+if (!payg_is_hr_role(current_role()) && current_role() !== 'admin'
+    && !employee_in_full_access_group()) {
     fail('HR/admin only', 403);
 }
 $db = db();

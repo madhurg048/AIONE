@@ -22,6 +22,17 @@
  */
 require_once __DIR__ . '/_bootstrap.php';
 require_login();
+
+/* ---------------------------------------------------------------------------
+ * DISABLED 2026-08-06 — merchant settlements were dropped from the product for
+ * every user. The endpoint is kept (with its tables and history) so the module
+ * can be switched back on, but it answers nothing while disabled. To re-enable:
+ * delete this block, re-add 'settlements' to sales_catalog() + the Admin
+ * product's Governance section in includes/sales-layout.php, and restore the
+ * role_access / emp_group_access grants for the 'settlements' module.
+ * ------------------------------------------------------------------------- */
+fail('Merchant settlements are not part of this system', 404);
+
 require_module('settlements');
 $db = db();
 $me = current_employee_id();

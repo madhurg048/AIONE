@@ -34,7 +34,15 @@ $grantable = array_map(fn($k, $v) => ['key' => $k, 'label' => $v[0]], array_keys
 <?php sales_scripts(); ?>
 <script>
 const MODULES = <?= json_encode($grantable) ?>;
+const IS_ADMIN = <?= sales_role() === 'admin' ? 'true' : 'false' ?>;
 let employees = [];
+
+async function setGrantAll(id, on){
+  if (on && !confirm('Give this group FULL ACCESS? Members will see every module and every record (Board level).')){ load(); return; }
+  const res = await apiSend('groups.php?id='+id, { grant_all: on?1:0 }, 'PATCH');
+  if (res.success){ toast(on?'Group now has FULL access':'Full access revoked'); load(); }
+  else { toast(res.error||'Failed', false); load(); }
+}
 
 async function pickers(){
   if (!employees.length) employees = (await apiGet('groups.php', { employees:1 })).data || [];
@@ -56,10 +64,14 @@ async function load(){
             :`<button onclick="reactivate(${g.id})" class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded">Reactivate</button>`}
         </div>
       </div>
-      <div class="mt-2 text-[11px] text-gray-500"><i class="fa-solid fa-user text-gray-300"></i> ${g.member_count} member(s)</div>
+      <div class="mt-2 text-[11px] text-gray-500"><i class="fa-solid fa-user text-gray-300"></i> ${g.member_count} member(s)
+        ${IS_ADMIN?`<label class="ml-3 inline-flex items-center gap-1 cursor-pointer" title="Members get EVERY module and org-wide record visibility (Board)">
+          <input type="checkbox" class="chk" ${+g.grant_all?'checked':''} onchange="setGrantAll(${g.id}, this.checked)"> <span class="text-[10px] uppercase">Full access</span></label>`:''}
+      </div>
       <div class="mt-1 flex flex-wrap gap-1">
+        ${+g.grant_all?'<span class="text-[10px] bg-red-100 text-red-700 rounded px-2 py-0.5 font-semibold"><i class="fa-solid fa-crown text-[8px]"></i> FULL ACCESS — all modules & records (Board)</span>':''}
         ${(g.modules||'').split(',').filter(Boolean).map(m=>`<span class="text-[10px] bg-emerald-50 text-emerald-700 rounded px-2 py-0.5"><i class="fa-solid fa-unlock text-[8px]"></i> ${esc(m)}</span>`).join('')
-          || '<span class="text-[10px] text-gray-400">grants no modules (organisational only)</span>'}
+          || (+g.grant_all?'':'<span class="text-[10px] text-gray-400">grants no modules (organisational only)</span>')}
       </div>
     </div>`).join('') || '<div class="text-gray-400 text-xs p-4">No groups yet.</div>';
 }

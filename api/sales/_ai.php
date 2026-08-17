@@ -111,11 +111,11 @@ function crm_ai_call(string $userInput, string $len = 'medium', string $path = '
     // cloud → local bridge fallback (used when box is unchecked, or box online but empty)
     $cloudThenLocal = function () use ($s, $userInput, $len, $path) {
         if ($s && $s['cloud_enabled'] && $s['cloud_url']) {
-            $ckey = $s['cloud_api_key'] ?: (defined('SERVICE_CHAT_KEY') && SERVICE_CHAT_KEY !== '' ? SERVICE_CHAT_KEY : null);
+            $ckey = $s['cloud_api_key'] ?: null;
             $r = _ai_post($s['cloud_url'], $userInput, $len, $ckey, $path);
             if ($r !== null) return ['response' => $r, 'source' => 'cloud'];
         }
-        if (defined('SERVICE_CHAT_ENDPOINT')) {
+        if (defined('SERVICE_CHAT_ENDPOINT') && SERVICE_CHAT_ENDPOINT !== '') {
             $lkey = defined('SERVICE_CHAT_KEY') ? SERVICE_CHAT_KEY : null;
             $r = _ai_post(SERVICE_CHAT_ENDPOINT, $userInput, $len, $lkey, $path);
             if ($r !== null) return ['response' => $r, 'source' => 'local'];

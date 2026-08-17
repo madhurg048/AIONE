@@ -54,15 +54,12 @@ function sales_guard(?array $allow = null): array
     $allowedMods = sales_allowed_modules();
     if ($allowedMods) {
         $script = basename($_SERVER['SCRIPT_NAME'] ?? '');
-        // sales-requests-service.php is the Service dept's customer-requests queue — same RBAC
-        // module as 'leads' (it replaces the Leads tab for Service, see sales_nav_href()).
-        if ($script === 'sales-requests-service.php') $script = 'sales-leads.php';
-        // sales-dashboard-service.php is the Service dept's Dashboard — same RBAC module as 'dashboard'.
-        if ($script === 'sales-dashboard-service.php') $script = 'sales-dashboard.php';
-        // sales-pipeline-service.php is the Service dept's Pipeline — same RBAC module as 'pipeline'.
-        if ($script === 'sales-pipeline-service.php') $script = 'sales-pipeline.php';
-        if (preg_match('/^sales-([a-z]+)\.php$/', $script, $mm)
-            && $mm[1] !== 'dashboard' && !in_array($mm[1], $allowedMods, true)) {
+        // The Service twins share their Sales counterpart's module and the CFO screens
+        // name their own — sales_script_module_map() holds both, so RBAC and the nav
+        // read the page's module from one place.
+        $module = sales_page_module($script);
+        if ($module !== null
+            && $module !== 'dashboard' && !in_array($module, $allowedMods, true)) {
             $home = sales_home();
             // guard against a redirect loop if home maps to this same disallowed page
             header('Location: ' . ($home === $script ? 'sales-dashboard.php' : $home));
@@ -88,7 +85,7 @@ function sales_head(string $title): void
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($title) ?> · PayG <?= htmlspecialchars(sales_vertical_label()) ?> Cloud</title>
+    <title><?= htmlspecialchars($title) ?> · AI One <?= htmlspecialchars(sales_vertical_label()) ?> Cloud</title>
     <meta name="csrf-token" content="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
@@ -143,6 +140,36 @@ function sales_head(string $title): void
         .pager button{border:1px solid #d1d5db;border-radius:5px;padding:2px 7px}
         .pager button:hover{background:#f1f5f9;color:#4f46e5}
         .pager button:disabled{opacity:.4;cursor:not-allowed}
+
+        /* ---- left sidebar shell — matches the All-In-One Figma aside exactly:
+               w-40 (160px) bg-gray-900, bordered PayG brand row, scrollable px-1 list,
+               12px items (gray-400, hover white/10, radius 8), indented icon-less
+               sub-items, uppercase gray-500 section headers, blue-600 active pill ---- */
+        #sideNav{position:fixed;top:0;left:0;bottom:0;width:160px;background:#111827;color:#9ca3af;
+            z-index:46;display:flex;flex-direction:column;overflow:hidden}
+        #sideNav .brand{display:flex;align-items:center;gap:6px;padding:10px 8px;
+            border-bottom:1px solid rgba(255,255,255,.1);flex:0 0 auto;white-space:nowrap}
+        #sideNav .nav-scroll{flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;padding:0 4px}
+        #sideNav .nav-scroll::-webkit-scrollbar{width:5px}
+        #sideNav .nav-scroll::-webkit-scrollbar-thumb{background:#374151;border-radius:3px}
+        #sideNav .sec{margin:12px 0 2px;padding:6px 8px;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;
+            color:#6b7280;font-weight:600;white-space:nowrap;overflow:hidden}
+        #sideNav a.side-link{display:flex;align-items:center;gap:10px;margin:0 0 2px;padding:6px 8px;
+            border-radius:8px;font-size:12px;color:#9ca3af;white-space:nowrap;transition:all .15s}
+        #sideNav a.side-link span{overflow:hidden;text-overflow:ellipsis;line-height:1.25}
+        #sideNav a.side-link.sub{padding-left:12px}
+        #sideNav a.side-link:hover{background:rgba(255,255,255,.1);color:#fff}
+        #sideNav a.side-link.on{background:#2563eb;color:#fff;font-weight:500}
+        #sideNav a.side-link i{width:16px;text-align:center;color:#6b7280;flex:0 0 auto;font-size:12px}
+        #sideNav a.side-link.on i{color:#fff}
+        .top-prod{padding:5px 12px;margin:0 1px;font-size:13px;font-weight:500;color:#4b5563;border-radius:8px;white-space:nowrap}
+        .top-prod:hover{color:#111827;background:#f3f4f6}
+        .top-prod.on{color:#fff;font-weight:600;background:#2563eb}   /* active pill, per the All-In-One design */
+        @media(min-width:768px){body{padding-left:160px}}
+        @media(max-width:767.98px){
+            #sideNav{transform:translateX(-100%);transition:transform .2s ease;box-shadow:0 0 40px rgba(0,0,0,.4)}
+            #sideNav.open{transform:none}
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -165,14 +192,67 @@ function sales_page_title(): string
         'sales-kpa.php' => 'KPA / KRA',
         'sales-users.php' => 'User Management', 'sales-integrations.php' => 'Integrations',
         'sales-org.php' => 'Org & Roles',
-        'sales-escalations.php' => 'Escalations & SLA', 'sales-settlements.php' => 'Merchant Settlements',
+        'sales-escalations.php' => 'Escalations & SLA',
         'sales-compliance.php' => 'Compliance & Certifications', 'sales-groups.php' => 'Employee Groups',
         'sales-documents.php' => 'Documents',
+        'sales-legal.php' => 'Legal Documents',
+        'sales-govmap.php' => 'Governance Map',
+        'sales-performance.php' => 'Performance',
+        'sales-kra.php' => 'KRA / KPI Library',
+        'sales-orgchart.php' => 'Org Chart',
+        'sales-cfo.php' => 'CFO Cockpit',
+        'sales-cfo-calendar.php' => 'Calendar & Tasks',
+        'sales-cfo-reviews.php' => 'Review & Sign-off',
+        'sales-cfo-forms.php' => 'Forms & Submissions',
+        'sales-cfo-capa.php' => 'Actions / CAPA',
+        'sales-cfo-risk.php' => 'Risk Register',
+        'sales-cfo-kri.php' => 'KPI / KRI Monitoring',
+        'sales-cfo-evidence.php' => 'Evidence Library',
+        'sales-cfo-reports.php' => 'Reports & Export',
+        'sales-cfo-audit.php' => 'Audit Trail',
+        'sales-cfo-settings.php' => 'Admin & Settings',
     ];
     return $t[basename($_SERVER['SCRIPT_NAME'] ?? '')] ?? 'Sales';
 }
 
-define('APP_NAME', 'PayG Sales Cloud');
+/**
+ * RBAC module for pages whose filename isn't sales-<module>.php.
+ * The Service twins share their Sales counterpart's module; the CFO cockpit's
+ * screens are hyphenated, so each one names its own module here. Used by both
+ * sales_guard() (enforcement) and sales_current_product() (which product owns
+ * the page), so the two can never disagree.
+ */
+function sales_script_module_map(): array
+{
+    return [
+        'sales-requests-service.php'  => 'leads',
+        'sales-leads-service.php'     => 'leads',
+        'sales-dashboard-service.php' => 'dashboard',
+        'sales-pipeline-service.php'  => 'pipeline',
+        'sales-cfo.php'               => 'cfo_dashboard',
+        'sales-cfo-calendar.php'      => 'cfo_calendar',
+        'sales-cfo-reviews.php'       => 'cfo_reviews',
+        'sales-cfo-forms.php'         => 'cfo_forms',
+        'sales-cfo-capa.php'          => 'cfo_capa',
+        'sales-cfo-risk.php'          => 'cfo_risk',
+        'sales-cfo-kri.php'           => 'cfo_kri',
+        'sales-cfo-evidence.php'      => 'cfo_evidence',
+        'sales-cfo-reports.php'       => 'cfo_reports',
+        'sales-cfo-audit.php'         => 'cfo_audit',
+        'sales-cfo-settings.php'      => 'cfo_settings',
+    ];
+}
+
+/** The module a page belongs to: the map above, else sales-<module>.php. */
+function sales_page_module(?string $script = null): ?string
+{
+    $script = $script ?: basename($_SERVER['SCRIPT_NAME'] ?? '');
+    $map = sales_script_module_map();
+    if (isset($map[$script])) return $map[$script];
+    return preg_match('/^sales-([a-z]+)\.php$/', $script, $m) ? $m[1] : null;
+}
+
+define('APP_NAME', 'AI One Sales Cloud');
 
 /** Home page for the current role (brand click / default landing). */
 function sales_home(): string
@@ -182,6 +262,7 @@ function sales_home(): string
             'service_exec'=>'sales-requests-service.php', 'service_manager'=>'sales-dashboard-service.php',
             'hr_head'=>'sales-hr.php', 'hr_manager'=>'sales-hr.php', 'hr'=>'sales-hr.php',
             'it'=>'sales-it.php', 'it_manager'=>'sales-it.php',
+            'cfo'=>'sales-cfo.php', 'finance_manager'=>'sales-cfo.php',
             'support'=>'sales-chat.php', 'support_manager'=>'sales-conversations.php'];
     return $map[sales_role()] ?? 'sales-dashboard.php';
 }
@@ -189,17 +270,51 @@ function sales_home(): string
 function sales_header(array $me, string $centerTitle = ''): void
 {
     $page = sales_page_title(); ?>
-<header class="bg-white shadow-sm h-12 flex items-center gap-3 px-4 sticky top-0 z-40">
-    <!-- brand (links to the role's home) -->
-    <a href="<?= sales_home() ?>" class="flex items-center gap-2 shrink-0 no-underline">
-        <img src="/payg/public/images/PayG-Dark.svg" alt="PayG" class="h-6 object-contain" onerror="this.style.display='none'">
-        <span class="font-bold text-indigo-700 text-lg tracking-tight leading-none">PayG</span>
-        <span class="text-gray-400 font-normal text-lg leading-none hidden sm:inline"><?= htmlspecialchars(sales_vertical_label()) ?>&nbsp;Cloud</span>
-    </a>
-    <!-- page title (fixed position, right after brand) -->
-    <span class="text-gray-300 shrink-0">/</span>
-    <h1 class="text-gray-800 font-semibold text-base shrink-0 leading-none"><?= htmlspecialchars($page) ?></h1>
+<header class="bg-white shadow-sm h-12 flex items-center gap-1 px-3 sticky top-0 z-40">
+    <!-- mobile: sidebar toggle (the brand lives on the sidebar now) -->
+    <button type="button" onclick="toggleSideNav()" class="md:hidden text-gray-600 px-1.5"><i class="fa-solid fa-bars"></i></button>
+    <!-- DEPARTMENT DROPDOWN: only the departments this user has access to (IT, HR, Sales, Admin…) -->
+    <?php
+    $curProd = sales_current_product();
+    $acc = sales_accessible_product_keys();
+    $deptKeys = array_values(array_intersect(sales_dept_product_keys(), $acc));
+    $utilKeys = array_values(array_diff($acc, $deptKeys));
+    // label the dropdown with the same sticky dept the sidebar renders (constant everywhere)
+    $curDept = $deptKeys ? sales_current_dept() : null;
+    if ($deptKeys): $cd = $curDept ? sales_products()[$curDept] : null; ?>
+    <div class="relative group shrink-0">
+        <button type="button" class="flex items-center gap-2 px-3 py-1.5 text-[13px] font-semibold text-gray-800 border border-gray-200 rounded-lg hover:bg-gray-50">
+            <i class="fa-solid <?= $cd ? $cd[1] : 'fa-building' ?> text-indigo-500"></i>
+            AI One <?= htmlspecialchars($cd ? $cd[0] : 'Workspace') ?>
+            <i class="fa-solid fa-chevron-down text-[9px] text-gray-400"></i>
+        </button>
+        <div class="absolute left-0 top-full hidden group-hover:block group-focus-within:block bg-white shadow-lg border rounded-lg min-w-[190px] z-50 py-1">
+            <div class="px-3 pt-1 pb-1.5 text-[9px] uppercase tracking-wider text-gray-400">Your departments</div>
+            <?php foreach ($deptKeys as $pk): [$plabel, $picon] = sales_products()[$pk]; ?>
+            <a href="<?= sales_product_home($pk) ?>" onclick="document.cookie='payg_product=<?= $pk ?>;path=/'"
+               class="flex items-center gap-2.5 px-3 py-2 text-xs <?= $pk === $curDept ? 'text-indigo-700 bg-indigo-50 font-semibold' : 'text-gray-700 hover:bg-gray-50' ?>">
+               <i class="fa-solid <?= $picon ?> w-4 text-center <?= $pk === $curDept ? 'text-indigo-500' : 'text-gray-400' ?>"></i><?= htmlspecialchars($plabel) ?>
+               <?php if ($pk === $curDept): ?><i class="fa-solid fa-check ml-auto text-[9px] text-indigo-500"></i><?php endif; ?></a>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+    <!-- cross-department links (like the Figma top bar) -->
+    <nav class="flex items-center overflow-x-auto shrink min-w-0 ml-1">
+        <?php // utilities do NOT touch the payg_product cookie — the sidebar's dept stays put
+        foreach ($utilKeys as $pk): [$plabel] = sales_products()[$pk]; ?>
+        <a href="<?= sales_product_home($pk) ?>"
+           class="top-prod<?= $pk === $curProd ? ' on' : '' ?>"><?= htmlspecialchars($plabel) ?></a>
+        <?php endforeach; ?>
+    </nav>
     <div class="flex-1"></div>
+    <!-- breadcrumb: current page | current department (like the Figma's "User Management | PayG Admin") -->
+    <span class="hidden md:flex items-center gap-1.5 text-xs text-gray-400 whitespace-nowrap shrink-0 mr-2">
+        <i class="fa-solid fa-angle-right text-[9px]"></i>
+        <span class="text-gray-700 font-semibold"><?= htmlspecialchars($page) ?></span>
+        <?php if ($curDept): ?><span class="text-gray-300">|</span>
+        <span>AI One <?= htmlspecialchars(sales_products()[$curDept][0]) ?></span><?php endif; ?>
+    </span>
     <div class="flex items-center justify-end gap-3 text-sm whitespace-nowrap shrink-0">
         <span class="hidden lg:flex items-center gap-3">
             <span class="text-gray-700 font-medium"><?= htmlspecialchars($me['_full_name']) ?></span>
@@ -264,24 +379,21 @@ function sales_allowed_modules(): array
         // Group grants are additive: membership of an active group that carries a
         // module (e.g. "Compliance Team" -> compliance) unions into the role's set.
         // Only when the role IS restricted — an empty set already means "allow all".
-        //
-        // Its OWN try/catch on purpose: an empty $cache means "allow all modules"
-        // (see the docblock above), so letting a failure here reach the outer catch
-        // would silently disable RBAC app-wide — that is exactly what happens if the
-        // phase50 emp_group_* tables have not been migrated yet. A missing/broken
-        // group table must only skip the union, never widen the role's set.
         if ($cache) {
-            try {
-                $empId = (int)($_SESSION['user']['data']['employee']['id'] ?? ($_SESSION['user']['data']['id'] ?? 0));
-                if ($empId) {
-                    $g = $db->prepare("SELECT DISTINCT a.module_key FROM emp_group_access a
-                                         JOIN emp_group_members m ON m.group_id=a.group_id
-                                         JOIN emp_groups gr ON gr.id=a.group_id
-                                        WHERE m.employee_id=? AND a.can_access=1 AND gr.is_active=1");
-                    $g->execute([$empId]);
-                    $cache = array_values(array_unique(array_merge($cache, $g->fetchAll(PDO::FETCH_COLUMN))));
-                }
-            } catch (Throwable $e) { /* keep the role's own set — never widen it */ }
+            $empId = (int)($_SESSION['user']['data']['employee']['id'] ?? ($_SESSION['user']['data']['id'] ?? 0));
+            if ($empId) {
+                // a full-access group (Board) unlocks every module — empty list = unrestricted
+                $fa = $db->prepare("SELECT COUNT(*) FROM emp_group_members m JOIN emp_groups g ON g.id=m.group_id
+                                     WHERE m.employee_id=? AND g.is_active=1 AND g.grant_all=1");
+                $fa->execute([$empId]);
+                if ((int)$fa->fetchColumn() > 0) return $cache = [];
+                $g = $db->prepare("SELECT DISTINCT a.module_key FROM emp_group_access a
+                                     JOIN emp_group_members m ON m.group_id=a.group_id
+                                     JOIN emp_groups gr ON gr.id=a.group_id
+                                    WHERE m.employee_id=? AND a.can_access=1 AND gr.is_active=1");
+                $g->execute([$empId]);
+                $cache = array_values(array_unique(array_merge($cache, $g->fetchAll(PDO::FETCH_COLUMN))));
+            }
         }
     } catch (Throwable $e) { $cache = []; }
     return $cache;
@@ -317,23 +429,40 @@ function sales_catalog(): array
         'reports'    => ['Reports',     'fa-chart-column',    'sales-reports.php'],
         'automation' => ['Automation',  'fa-robot',           'sales-automation.php'],
         'settings'   => ['Settings',    'fa-gear',            'sales-settings.php'],
-        'kpa'        => ['KPA / KRA',   'fa-crosshairs',      'sales-kpa.php'],
+        'kpa'        => ['KRA / KPI Library', 'fa-crosshairs', 'sales-kpa.php'],
         'admin'      => ['Incentive Setup', 'fa-sliders',     'sales-admin.php'],
-        'org'        => ['Org & Roles', 'fa-sitemap',         'sales-org.php'],
+        'org'        => ['My Org', 'fa-building',            'sales-org.php'],
         'users'      => ['Users',       'fa-users-gear',      'sales-users.php'],
         'integrations'=>['Integrations','fa-plug',            'sales-integrations.php'],
         'escalations'=> ['Escalations', 'fa-arrow-trend-up',  'sales-escalations.php'],
-        'settlements'=> ['Settlements', 'fa-file-invoice-dollar', 'sales-settlements.php'],
         'compliance' => ['Compliance',  'fa-shield-halved',   'sales-compliance.php'],
         'groups'     => ['Groups',      'fa-people-group',    'sales-groups.php'],
         'documents'  => ['Documents',   'fa-folder-open',     'sales-documents.php'],
+        'legal'      => ['Legal',       'fa-scale-balanced',  'sales-legal.php'],
+        'govmap'     => ['Governance Map','fa-diagram-project', 'sales-govmap.php'],
+        'performance'=> ['Performance', 'fa-gauge-high',      'sales-performance.php'],
+        'kra'        => ['KRA Library', 'fa-bullseye',        'sales-kra.php'],
+        'kpi'        => ['KPI Library', 'fa-chart-simple',    'sales-kra.php?view=kpi'],
+        'orgchart'   => ['Org Chart',   'fa-sitemap',         'sales-orgchart.php'],
+        // CFO cockpit — the finance compliance product
+        'cfo_dashboard' => ['CFO Dashboard',      'fa-gauge-high',       'sales-cfo.php'],
+        'cfo_calendar'  => ['Calendar & Tasks',   'fa-calendar-check',   'sales-cfo-calendar.php'],
+        'cfo_reviews'   => ['Review & Sign-off',  'fa-file-signature',   'sales-cfo-reviews.php'],
+        'cfo_forms'     => ['Forms & Submissions','fa-file-lines',       'sales-cfo-forms.php'],
+        'cfo_capa'      => ['Actions / CAPA',     'fa-screwdriver-wrench','sales-cfo-capa.php'],
+        'cfo_risk'      => ['Risk Register',      'fa-triangle-exclamation','sales-cfo-risk.php'],
+        'cfo_kri'       => ['KPI / KRI',          'fa-chart-line',       'sales-cfo-kri.php'],
+        'cfo_evidence'  => ['Evidence Library',   'fa-paperclip',        'sales-cfo-evidence.php'],
+        'cfo_reports'   => ['Reports & Export',   'fa-file-export',      'sales-cfo-reports.php'],
+        'cfo_audit'     => ['Audit Trail',        'fa-fingerprint',      'sales-cfo-audit.php'],
+        'cfo_settings'  => ['Admin & Settings',   'fa-sliders',          'sales-cfo-settings.php'],
     ];
 }
 
 /** Grouped nav layout: [k] single link, or [label, icon, [keys...]] dropdown. */
 function sales_groups(): array
 {
-    $deptModules = ['leads', 'pipeline', 'merchants', 'transactions', 'settlements', 'incentives', 'reimbursements', 'scorecards', 'reports'];
+    $deptModules = ['leads', 'pipeline', 'merchants', 'transactions', 'incentives', 'reimbursements', 'scorecards', 'reports'];
     // Sales has no equivalent tab — 'genleads' only ever lists leads Service itself captured.
     $serviceModules = array_merge($deptModules, ['genleads']);
 
@@ -346,6 +475,8 @@ function sales_groups(): array
         // to sales-dashboard-service.php via sales_nav_href()).
         return [
             ['dashboard'],
+            ['hr'],
+            ['it'],
             ['activity'],
             ['Sales',   'fa-briefcase', array_merge(['dashboard'], $deptModules), 'sales'],
             ['Service', 'fa-headset',   array_merge(['dashboard'], $serviceModules), 'service'],
@@ -541,70 +672,305 @@ function sales_nav_label(string $key, ?string $vertical, array $tabs): string
     return $tabs[$key][0];
 }
 
+/* ================================================================== *
+ *  Product model — the TOP BAR lists products; the LEFT SIDEBAR shows
+ *  the selected product's modules in grouped sections (screenshot-style).
+ *  sales_groups() above is retained only for reference; the nav renders
+ *  from sales_products() now.
+ * ================================================================== */
+
+/** key => [label, icon, sections ('' = unlabeled) => [module keys], vertical|null] */
+/**
+ * A section item is either a module key (string) or a VIRTUAL link (assoc array:
+ * label/icon/href/module/query) — a filtered view of an existing page, e.g.
+ * "Board of Directors" = the People grid pre-filtered to governance=board.
+ * Virtuals let the nav mirror the approved Figma IA without duplicating pages
+ * or RBAC rows: access always follows the underlying `module`.
+ */
+function sales_products(): array
+{
+    $money = ['transactions', 'incentives', 'reimbursements'];
+    $v = fn($label, $icon, $href, $module, $query) =>
+        ['label' => $label, 'icon' => $icon, 'href' => $href, 'module' => $module, 'query' => $query];
+    $board      = $v('Board of Directors', 'fa-user-tie', 'sales-users.php?gov=board', 'users', ['gov' => 'board']);
+    $advisory   = $v('Advisory Board', 'fa-user-graduate', 'sales-users.php?gov=advisory', 'users', ['gov' => 'advisory']);
+    $leadership = $v('Executive Leadership', 'fa-user-astronaut', 'sales-users.php?gov=executive', 'users', ['gov' => 'executive']);
+    $employees  = $v('Employees', 'fa-users', 'sales-users.php?type=employee', 'users', ['type' => 'employee']);
+    $contract   = $v('Contractors', 'fa-user-clock', 'sales-users.php?type=contractor', 'users', ['type' => 'contractor']);
+    $slaTab     = $v('SLA', 'fa-stopwatch', 'sales-escalations.php?tab=sla', 'escalations', ['tab' => 'sla']);
+    $matrixTab  = $v('Escalation Matrices', 'fa-sitemap', 'sales-escalations.php?tab=matrix', 'escalations', ['tab' => 'matrix']);
+    $teamKpi    = $v('My Team KPI/KRA', 'fa-people-arrows', 'sales-kpa.php', 'kpa', []);
+    $deptsTab   = $v('Departments / Sub-departments', 'fa-layer-group', 'sales-org.php?tab=departments', 'org', ['tab' => 'departments']);
+    $desigTab   = $v('Designations', 'fa-id-badge', 'sales-org.php?tab=designations', 'org', ['tab' => 'designations']);
+
+    return [
+        // ---- department products (the top-bar DROPDOWN) ----
+        'sales'         => ['Sales', 'fa-briefcase',
+            ['' => ['dashboard'], 'Funnel' => ['leads', 'pipeline', 'merchants'],
+             'Money' => $money, 'Performance' => ['scorecards', 'performance', 'reports']], 'sales'],
+        'service'       => ['Service', 'fa-headset',
+            ['' => ['dashboard'], 'Queue' => ['leads', 'pipeline', 'genleads', 'merchants'],
+             'Money' => $money, 'Performance' => ['scorecards', 'performance', 'reports']], 'service'],
+        'hr'            => ['HR', 'fa-user-group',
+            ['' => ['hr'],
+             'Organization' => ['users', 'org', 'groups'],
+             'Workforce' => [$employees, $contract],
+             'Performance' => ['kpa', 'scorecards', 'performance', 'reports']], null],
+        'it'            => ['IT', 'fa-server',
+            ['' => ['it'], 'Support' => ['tickets'], 'Team' => ['performance'], 'Platform' => ['integrations', 'settings', 'automation']], null],
+        // CFO — the finance compliance cockpit. Document Library points at the existing
+        // DMS rather than a second copy of it, and Evidence links INTO those documents.
+        'cfo'           => ['CFO', 'fa-coins',
+            ['' => ['cfo_dashboard'],
+             'Compliance' => ['cfo_calendar', 'cfo_forms', 'cfo_reviews', 'cfo_capa'],
+             'Risk & Performance' => ['cfo_risk', 'cfo_kri'],
+             'Evidence' => ['cfo_evidence', 'documents'],
+             'Governance' => ['cfo_reports', 'cfo_audit', 'compliance', 'cfo_settings']], null],
+        'admin'         => ['Admin', 'fa-user-shield',
+            ['' => ['dashboard'],
+             'Organization' => ['org', $deptsTab, $desigTab, 'users', $board, $advisory, $leadership, 'groups'],
+             'KRA / KPI / SLA' => ['kra', 'kpi', 'kpa', 'scorecards', 'performance', $slaTab, $matrixTab, 'escalations'],
+             'Workforce' => [$employees, $contract, $teamKpi],
+             'Governance' => ['compliance', 'legal', 'govmap'],
+             'Platform' => ['admin', 'automation', 'settings', 'integrations']], null],
+        // ---- cross-department utilities (inline top-bar links, like the Figma) ----
+        'activity'      => ['My Activity', 'fa-wave-square', ['' => ['activity']], null],
+        'conversations' => ['Conversations', 'fa-comments',
+            ['' => ['chat', 'whatsapp', 'inbox', 'conversations', 'calls', 'tickets']], null],
+        'orgchart'      => ['Org Chart', 'fa-sitemap', ['' => ['orgchart']], null],
+        'documents'     => ['Documents', 'fa-folder-open', ['' => ['documents']], null],
+        'timesheet'     => ['Timesheet', 'fa-clock', ['' => ['timesheet']], null],
+    ];
+}
+
+/** Department products (top-bar dropdown) vs cross-dept utilities (inline links). */
+function sales_dept_product_keys(): array { return ['sales', 'service', 'hr', 'it', 'cfo', 'admin']; }
+
+/** Member of an active FULL-ACCESS (Board) group? Mirrors _bootstrap's employee_in_full_access_group. */
+function sales_is_full_access(): bool
+{
+    static $cache = null;
+    if ($cache !== null) return $cache;
+    $empId = (int)($_SESSION['user']['data']['employee']['id'] ?? ($_SESSION['user']['data']['id'] ?? 0));
+    if (!$empId) return $cache = false;
+    try {
+        $s = getDB()->prepare("SELECT COUNT(*) FROM emp_group_members m JOIN emp_groups g ON g.id=m.group_id
+                                WHERE m.employee_id=? AND g.is_active=1 AND g.grant_all=1");
+        $s->execute([$empId]);
+        return $cache = ((int)$s->fetchColumn() > 0);
+    } catch (Throwable $e) { return $cache = false; }
+}
+
+/** Can the current user see this product in the top bar? */
+function sales_product_accessible(string $key): bool
+{
+    $role = sales_role();
+    $isAdmin = $role === 'admin';
+    $full = sales_is_full_access();
+    $allowed = sales_allowed_modules();
+    $can = fn($k) => !$allowed || in_array($k, $allowed, true);
+    $def = sales_products()[$key] ?? null;
+    if (!$def) return false;
+    $any = false;
+    foreach ($def[2] as $keys) foreach ($keys as $k) {
+        $mk = is_array($k) ? $k['module'] : $k;
+        if ($can($mk)) { $any = true; break 2; }
+    }
+    if (!$any) return false;
+    switch ($key) {   // dept products are dept-locked (admin + Board see all)
+        case 'sales':   return $isAdmin || $full || payg_role_dept($role) === 'Sales';
+        case 'service': return $isAdmin || $full || payg_role_dept($role) === 'Service';
+        case 'hr':      return $isAdmin || $full || payg_is_hr_role($role);
+        case 'it':      return $isAdmin || $full || payg_role_dept($role) === 'IT';
+        case 'cfo':     return $isAdmin || $full || payg_role_dept($role) === 'Finance';
+        case 'admin':   return $isAdmin || $full;
+        default:        return true;
+    }
+}
+
+function sales_accessible_product_keys(): array
+{
+    static $cache = null;
+    if ($cache !== null) return $cache;
+    return $cache = array_values(array_filter(array_keys(sales_products()), 'sales_product_accessible'));
+}
+
+/** First reachable module link of a product (its "home"). */
+function sales_product_home(string $key): string
+{
+    $def = sales_products()[$key];
+    $allowed = sales_allowed_modules();
+    $can = fn($k) => !$allowed || in_array($k, $allowed, true);
+    $tabs = sales_catalog();
+    $vert = sales_role() === 'admin' ? $def[3] : null;
+    foreach ($def[2] as $keys) foreach ($keys as $k) {
+        if (is_array($k)) { if ($can($k['module'])) return $k['href']; continue; }
+        if ($can($k)) return sales_nav_href($k, $vert, $tabs);
+    }
+    return 'sales-dashboard.php';
+}
+
+/**
+ * Which product the current page belongs to: the page's module decides, the
+ * ?vertical tag disambiguates Sales/Service twins, and the payg_product cookie
+ * breaks any remaining tie (it's set every time a top-bar product is clicked).
+ */
+function sales_current_product(): ?string
+{
+    static $cur = false;
+    if ($cur !== false) return $cur;
+    $script = basename($_SERVER['SCRIPT_NAME'] ?? '');
+    $module = sales_page_module($script);
+    $vert = in_array($_GET['vertical'] ?? '', ['sales', 'service'], true) ? $_GET['vertical']
+          : (str_ends_with($script, '-service.php') ? 'service' : null);
+    $cookie = preg_replace('/[^a-z]/', '', (string)($_COOKIE['payg_product'] ?? ''));
+    $acc = sales_accessible_product_keys();
+
+    $candidates = [];
+    foreach ($acc as $key) {
+        foreach (sales_products()[$key][2] as $keys) {
+            $mods = array_map(fn($k) => is_array($k) ? $k['module'] : $k, $keys);
+            if ($module !== null && in_array($module, $mods, true)) { $candidates[] = $key; break; }
+        }
+    }
+    if ($vert !== null) {
+        $vMatch = array_values(array_filter($candidates, fn($k) => (sales_products()[$k][3] ?? null) === $vert));
+        if ($vMatch) $candidates = $vMatch;
+    }
+    if (in_array($cookie, $candidates, true)) return $cur = $cookie;
+    if ($candidates) {
+        // Shared modules ('users' lives in HR and Admin, 'scorecards' in three depts):
+        // break the tie toward the viewer's own department, not products-array order.
+        $role = sales_role();
+        $prefer = $role === 'admin' ? ['admin', 'sales', 'service', 'hr', 'it']
+                : (payg_is_hr_role($role) ? ['hr']
+                : (payg_role_dept($role) === 'IT' ? ['it']
+                : (payg_role_dept($role) === 'Service' ? ['service'] : ['sales'])));
+        foreach ($prefer as $p) if (in_array($p, $candidates, true)) return $cur = $p;
+        return $cur = $candidates[0];
+    }
+    if (in_array($cookie, $acc, true)) return $cur = $cookie;
+    return $cur = ($acc[0] ?? null);
+}
+
+/**
+ * Department whose sections the SIDEBAR shows. STICKY: never a utility product
+ * (Documents / Timesheet / Activity / Conversations), so the left bar stays
+ * constant while browsing those pages — they highlight in the top bar instead.
+ * Falls back cookie → role affinity when the page itself isn't a dept page.
+ */
+function sales_current_dept(): ?string
+{
+    static $c = false;
+    if ($c !== false) return $c;
+    $deptKeys = array_values(array_intersect(sales_dept_product_keys(), sales_accessible_product_keys()));
+    if (!$deptKeys) return $c = sales_current_product();   // roles with no dept product (e.g. support)
+    // cookie first: the dropdown sets it on every dept switch, so the bar only ever
+    // changes when the user deliberately changes department
+    $cookie = preg_replace('/[^a-z]/', '', (string)($_COOKIE['payg_product'] ?? ''));
+    if (in_array($cookie, $deptKeys, true)) return $c = $cookie;
+    $cur = sales_current_product();
+    if (in_array($cur, $deptKeys, true)) return $c = $cur;
+    $role = sales_role();
+    $prefer = $role === 'admin' ? ['admin'] : (payg_is_hr_role($role) ? ['hr']
+            : (payg_role_dept($role) === 'IT' ? ['it']
+            : (payg_role_dept($role) === 'Service' ? ['service'] : ['sales'])));
+    foreach ($prefer as $p) if (in_array($p, $deptKeys, true)) return $c = $p;
+    return $c = $deptKeys[0];
+}
+
 function sales_nav(string $active): void
 {
     $tabs = sales_catalog();
     $allowed = sales_allowed_modules();
     $can = fn($k) => !$allowed || in_array($k, $allowed, true);
-    $nav = sales_groups();
-    $topCls = fn($on) => $on ? 'text-indigo-600 border-indigo-600 font-semibold' : 'text-gray-500 border-transparent hover:text-indigo-600';
-    $link = function ($k, $vertical = null) use ($tabs, $active, $topCls) {
+
+    $prodKey = sales_current_dept();   // sticky dept — the sidebar never collapses to a utility
+    $products = sales_products();
+    $prod = $prodKey ? $products[$prodKey] : null;
+    // admin's Sales/Service links carry ?vertical= tags; everyone else browses untagged
+    $tagVert = (sales_role() === 'admin' && $prod) ? $prod[3] : null;
+    // Only one product renders at a time, so a key match is unambiguous; the vertical
+    // check only matters when the page IS tagged (admin browsing ?vertical=…).
+    $navVert = in_array($_GET['vertical'] ?? '', ['sales', 'service'], true) ? $_GET['vertical'] : null;
+    $isOn = fn($k, $vertical = null) => $k === $active && ($navVert === null || ($vertical ?? null) === $navVert);
+
+    // Virtual links (Board of Directors, Employees, SLA tab, …) are filtered views of a
+    // real page: active when the module matches AND the URL carries their exact params.
+    // The plain module link stays inactive while a filter param is present, so only one
+    // sidebar row ever highlights.
+    $filterParams = ['gov', 'type', 'tab'];
+    $hasFilter = (bool)array_intersect_key($_GET, array_flip($filterParams));
+    $isOnVirtual = function (array $vd) use ($active) {
+        if ($vd['module'] !== $active) return false;
+        if (!$vd['query']) return true;
+        foreach ($vd['query'] as $p => $val) if (($_GET[$p] ?? null) !== $val) return false;
+        return true;
+    };
+    // Per the Figma: top-level (unsectioned) items keep their 16px icon; items inside a
+    // named section are icon-less and indented ('sub'). Only the design's active pill
+    // (blue-600) marks the current row.
+    $item = function ($k, bool $sub = false) use ($tabs, $tagVert, $isOn, $isOnVirtual, $hasFilter) {
+        $cls = 'side-link' . ($sub ? ' sub' : '');
+        if (is_array($k)) {   // virtual link
+            return '<a href="' . $k['href'] . '" class="' . $cls . ($isOnVirtual($k) ? ' on' : '') . '">'
+                 . ($sub ? '' : '<i class="fa-solid ' . $k['icon'] . '"></i>')
+                 . '<span>' . htmlspecialchars($k['label']) . '</span></a>';
+        }
         [, $icon] = $tabs[$k];
-        $label = sales_nav_label($k, $vertical, $tabs);
-        $href = sales_nav_href($k, $vertical, $tabs);
-        return '<a href="' . $href . '" class="flex items-center gap-2 px-3 py-2 border-b-2 text-xs ' . $topCls($k === $active) . '">'
-             . '<i class="fa-solid ' . $icon . '"></i>' . $label . '</a>';
+        $label = sales_nav_label($k, $tagVert, $tabs);
+        $href = sales_nav_href($k, $tagVert, $tabs);
+        $on = $isOn($k, $tagVert) && !$hasFilter;
+        return '<a href="' . $href . '" class="' . $cls . ($on ? ' on' : '') . '">'
+             . ($sub ? '' : '<i class="fa-solid ' . $icon . '"></i>')
+             . '<span>' . $label . '</span></a>';
     };
 
-    echo '<nav class="bg-white border-b px-2 sm:px-4 relative">';
+    echo '<aside id="sideNav">';
+    // brand — the aside header: Logo on left + "AI One" on right in 1 single line
+    echo '<a href="' . sales_home() . '" class="brand no-underline flex items-center gap-1.5 px-2 py-2.5 whitespace-nowrap overflow-hidden">'
+       . '<img src="public/images/PayG-Dark.svg" alt="Logo" class="h-5 w-auto object-contain shrink-0 max-w-[75px]">'
+       . '<span class="text-white font-bold text-sm tracking-tight whitespace-nowrap shrink-0">AI One</span></a>';
 
-    // ---- mobile bar (hamburger + palette) ----
-    echo '<div class="md:hidden flex items-center justify-between py-2">';
-    echo   '<button type="button" onclick="toggleMobileNav()" class="flex items-center gap-2 text-xs text-gray-600"><i class="fa-solid fa-bars"></i> Menu</button>';
-    echo   '<button type="button" onclick="openPalette()" class="text-gray-400"><i class="fa-solid fa-magnifying-glass"></i></button>';
-    echo '</div>';
-
-    // ---- desktop grouped dropdowns ----
-    echo '<div class="hidden md:flex items-center gap-1">';
-    foreach ($nav as $entry) {
-        if (count($entry) === 1) { if ($can($entry[0])) echo $link($entry[0]); continue; }
-        [$glabel, $gicon, $keys] = $entry;
-        $vertical = $entry[3] ?? null;
-        $items = array_values(array_filter($keys, $can));
-        if (!$items) continue;
-        if (count($items) === 1) { echo $link($items[0], $vertical); continue; }
-        $groupOn = in_array($active, $items, true);
-        echo '<div class="relative group">';
-        echo   '<button type="button" class="flex items-center gap-2 px-3 py-2 border-b-2 text-xs ' . $topCls($groupOn) . '">'
-             . '<i class="fa-solid ' . $gicon . '"></i>' . $glabel . ' <i class="fa-solid fa-chevron-down text-[8px] opacity-60"></i></button>';
-        echo   '<div class="absolute left-0 top-full hidden group-hover:block group-focus-within:block bg-white shadow-lg border rounded-b-lg min-w-[180px] z-50 py-1">';
-        foreach ($items as $k) {
-            [, $icon] = $tabs[$k];
-            $label = sales_nav_label($k, $vertical, $tabs);
-            $href = sales_nav_href($k, $vertical, $tabs);
-            $icls = $k === $active ? 'text-indigo-600 bg-indigo-50 font-semibold' : 'text-gray-600 hover:bg-gray-50';
-            echo '<a href="' . $href . '" class="flex items-center gap-2 px-3 py-1.5 text-xs ' . $icls . '">'
-               . '<i class="fa-solid ' . $icon . ' w-4 text-center text-gray-400"></i>' . $label . '</a>';
+    echo '<div class="nav-scroll">';
+    $rendered = [];   // modules already shown, to build the "More" spillover
+    if ($prod) {
+        foreach ($prod[2] as $secLabel => $keys) {
+            $items = array_values(array_filter($keys, fn($k) => $can(is_array($k) ? $k['module'] : $k)));
+            if (!$items) continue;
+            if ($secLabel !== '') echo '<div class="sec">' . htmlspecialchars($secLabel) . '</div>';
+            foreach ($items as $k) { echo $item($k, $secLabel !== ''); $rendered[is_array($k) ? $k['module'] : $k] = true; }
         }
-        echo   '</div></div>';
     }
-    // desktop palette trigger
-    echo '<button type="button" onclick="openPalette()" class="ml-2 flex items-center gap-1.5 text-[11px] text-gray-400 border rounded px-2 py-1 hover:bg-gray-50" title="Search (Ctrl/Cmd K)"><i class="fa-solid fa-magnifying-glass"></i> <span class="hidden lg:inline">Search</span> <kbd class="hidden lg:inline text-[9px] bg-gray-100 rounded px-1">⌘K</kbd></button>';
-    echo '</div>';
 
-    // ---- mobile expanded menu (vertical, grouped) ----
-    echo '<div id="mobileNav" class="hidden md:hidden pb-2">';
-    foreach ($nav as $entry) {
-        if (count($entry) === 1) { if ($can($entry[0])) { [, $i]=$tabs[$entry[0]]; $l=sales_nav_label($entry[0], null, $tabs); $h=sales_nav_href($entry[0], null, $tabs); echo '<a href="'.$h.'" class="flex items-center gap-2 px-2 py-2 text-xs '.($entry[0]===$active?'text-indigo-600 font-semibold':'text-gray-600').'"><i class="fa-solid '.$i.' w-4 text-center"></i>'.$l.'</a>'; } continue; }
-        [$glabel, , $keys] = $entry;
-        $vertical = $entry[3] ?? null;
-        $items = array_values(array_filter($keys, $can));
-        if (!$items) continue;
-        echo '<div class="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wide text-gray-400">' . $glabel . '</div>';
-        foreach ($items as $k) { [, $i]=$tabs[$k]; $l=sales_nav_label($k, $vertical, $tabs); $h=sales_nav_href($k, $vertical, $tabs); echo '<a href="'.$h.'" class="flex items-center gap-2 px-3 py-1.5 text-xs '.($k===$active?'text-indigo-600 bg-indigo-50 font-semibold':'text-gray-600 hover:bg-gray-50').'"><i class="fa-solid '.$i.' w-4 text-center text-gray-400"></i>'.$l.'</a>'; }
+    // anything this user may access that the selected product doesn't cover
+    // (e.g. a Compliance Team member outside the Admin product) stays reachable
+    $covered = $rendered;
+    foreach (sales_accessible_product_keys() as $pk) {
+        if ($pk === $prodKey) continue;
+        foreach ($products[$pk][2] as $keys) foreach ($keys as $k) $covered[is_array($k) ? $k['module'] : $k] = true;
     }
+    $more = array_values(array_filter(array_keys($tabs), fn($k) => $can($k) && empty($covered[$k])));
+    if ($more) {
+        echo '<div class="sec">More</div>';
+        foreach ($more as $k) echo $item($k, true);
+    }
+    echo '</div>';   // /nav-scroll
+
+    // footer: who am I + search (kept for functionality; styled to the aside's gray-900 palette)
+    $me = $_SESSION['user']['data'] ?? [];
+    echo '<div class="shrink-0 p-2" style="border-top:1px solid rgba(255,255,255,.1)">';
+    echo   '<button type="button" onclick="openPalette()" class="w-full flex items-center gap-2 text-[11px] text-gray-400 rounded-lg px-2 py-1.5 hover:bg-white/10 hover:text-white" style="border:1px solid rgba(255,255,255,.1)" title="Search (Ctrl/Cmd K)">'
+         . '<i class="fa-solid fa-magnifying-glass"></i> Search <kbd class="ml-auto text-[9px] bg-white/10 rounded px-1">⌘K</kbd></button>';
+    echo   '<div class="mt-1.5 px-1 text-[11px] text-gray-400 truncate"><i class="fa-solid fa-circle-user text-gray-500"></i> '
+         . htmlspecialchars($me['full_name'] ?? ($me['name'] ?? 'User'))
+         . ' <span class="text-gray-600">· ' . htmlspecialchars(payg_role_label(sales_role())) . '</span></div>';
     echo '</div>';
-    echo '</nav>';
+    echo '</aside>';
+
+    // mobile: overlay + toggle handle
+    echo '<div id="sideNavOverlay" onclick="toggleSideNav()" class="hidden fixed inset-0 bg-black/40 z-[45] md:hidden"></div>';
+    echo '<script>function toggleSideNav(){document.getElementById("sideNav").classList.toggle("open");document.getElementById("sideNavOverlay").classList.toggle("hidden");}</script>';
 }
 
 function sales_scripts(): void
@@ -720,6 +1086,100 @@ function toggleMobileNav(){ document.getElementById('mobileNav')?.classList.togg
 /* presence heartbeat — keeps sales_users.last_heartbeat_at fresh so the chatbot can tell
    whether a Sales/Service exec is online before opening a live chat (see chatbot-ticket.php) */
 (function(){ const ping=()=>apiSend('auth.php?action=heartbeat', {}).catch(()=>{}); ping(); setInterval(ping, 30000); })();
+</script>
+
+<!-- ===== AI One Assistant — ask the system anything, on every page ===== -->
+<button id="aiChatFab" onclick="aiChatToggle()" title="Ask AI One about the system"
+  class="fixed bottom-5 right-5 z-[55] w-12 h-12 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl flex items-center justify-center">
+  <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
+</button>
+<div id="aiChatPanel" class="hidden fixed bottom-20 right-5 z-[55] w-[380px] max-w-[94vw] bg-white rounded-xl shadow-2xl border flex flex-col" style="height:480px;max-height:75vh">
+  <div class="h-11 px-3 border-b flex items-center justify-between bg-indigo-600 rounded-t-xl text-white">
+    <span class="text-sm font-semibold"><i class="fa-solid fa-wand-magic-sparkles"></i> AI One Assistant</span>
+    <span class="flex items-center gap-2">
+      <span id="aiChatSrc" class="text-[9px] bg-white/20 rounded px-1.5 py-0.5"></span>
+      <button onclick="aiChatToggle()" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+    </span>
+  </div>
+  <div id="aiChatMsgs" class="flex-1 overflow-y-auto p-3 space-y-2 text-xs bg-gray-50"></div>
+  <div id="aiChatChips" class="px-3 pb-1 pt-1.5 flex flex-wrap gap-1 border-t bg-white"></div>
+  <form onsubmit="aiChatSend(event)" class="p-2 flex gap-1.5 bg-white rounded-b-xl">
+    <input id="aiChatInput" autocomplete="off" placeholder="Ask about revenue, timesheets, renewals…"
+      class="flex-1 border rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-indigo-400">
+    <button class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3"><i class="fa-solid fa-paper-plane text-xs"></i></button>
+  </form>
+</div>
+<script>
+(function(){
+  const CHIPS = [
+    'Who has not filled timesheets today?',
+    'What is the revenue logged this week?',
+    'Revenue this quarter?',
+    'How many files in our documents?',
+    'Any certifications for renewal in next 3 months?',
+    'Which tasks have breached SLA?',
+    'My open tasks',
+  ];
+  let busy = false, greeted = false;
+  window.aiChatToggle = function(){
+    const p = document.getElementById('aiChatPanel');
+    p.classList.toggle('hidden');
+    if (!p.classList.contains('hidden')){
+      if (!greeted){ greeted = true;
+        aiMsg('bot', 'Hi! Ask me anything about the system — timesheets, revenue, documents, certifications, SLAs… Try a suggestion below.');
+        renderChips();
+      }
+      document.getElementById('aiChatInput').focus();
+    }
+  };
+  function renderChips(){
+    document.getElementById('aiChatChips').innerHTML = CHIPS.map(c =>
+      `<button type="button" onclick="aiChatAsk(${JSON.stringify(c).replace(/"/g,'&quot;')})"
+         class="text-[10px] bg-indigo-50 text-indigo-700 rounded-full px-2 py-0.5 hover:bg-indigo-100">${esc(c)}</button>`).join('');
+  }
+  function aiMsg(who, text){
+    const box = document.getElementById('aiChatMsgs');
+    const el = document.createElement('div');
+    el.className = who === 'me' ? 'flex justify-end' : 'flex justify-start';
+    el.innerHTML = who === 'me'
+      ? `<div class="bg-indigo-600 text-white rounded-2xl rounded-br-sm px-3 py-1.5 max-w-[85%]">${esc(text)}</div>`
+      : `<div class="bg-white border rounded-2xl rounded-bl-sm px-3 py-1.5 max-w-[90%] whitespace-pre-wrap">${esc(text)}</div>`;
+    box.appendChild(el);
+    box.scrollTop = box.scrollHeight;
+    return el;
+  }
+  window.aiChatAsk = function(qText){
+    document.getElementById('aiChatInput').value = qText;
+    document.querySelector('#aiChatPanel form').requestSubmit();
+  };
+  window.aiChatSend = async function(e){
+    e.preventDefault();
+    if (busy) return;
+    const inp = document.getElementById('aiChatInput');
+    const q = inp.value.trim();
+    if (!q) return;
+    inp.value = ''; busy = true;
+    aiMsg('me', q);
+    const think = aiMsg('bot', '…thinking');
+    try {
+      const res = await apiSend('assistant.php', { question: q });
+      think.remove();
+      if (res.success){
+        aiMsg('bot', res.data.answer);
+        const src = res.data.source;
+        document.getElementById('aiChatSrc').textContent =
+          src === 'evidence' ? 'evidence-only (AI offline)' : ('AI: ' + src);
+      } else {
+        aiMsg('bot', '⚠ ' + (res.error || 'Something went wrong.'));
+      }
+    } catch(err){
+      think.remove();
+      aiMsg('bot', '⚠ Network error — please try again.');
+    }
+    busy = false;
+    inp.focus();
+  };
+})();
 </script>
 <?php if (sales_role() === 'service_exec'): ?>
 <style>

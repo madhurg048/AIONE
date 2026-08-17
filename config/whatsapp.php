@@ -17,40 +17,42 @@
  * ------------------------------------------------------------------
  */
 
+require_once __DIR__ . '/env.php';
+
 // Master switch — flip to true once credentials below are filled in.
-if (!defined('WHATSAPP_ENABLED'))        define('WHATSAPP_ENABLED', false);
+if (!defined('WHATSAPP_ENABLED'))        define('WHATSAPP_ENABLED', env_bool('WHATSAPP_ENABLED', false));
 
 // Which environment the running app should use: 'test' or 'production'.
-if (!defined('WHATSAPP_ENV'))            define('WHATSAPP_ENV', 'test');
+if (!defined('WHATSAPP_ENV'))            define('WHATSAPP_ENV', env('WHATSAPP_ENV', 'test'));
 
 // Identifies the provider (so we can swap implementations later).
 // Examples the client may supply: 'meta_cloud', 'gupshup', 'interakt', 'whapi'.
-if (!defined('WHATSAPP_PROVIDER'))       define('WHATSAPP_PROVIDER', '');
+if (!defined('WHATSAPP_PROVIDER'))       define('WHATSAPP_PROVIDER', env('WHATSAPP_PROVIDER', ''));
 
 // ── TEST credentials ────────────────────────────────────────────────
-if (!defined('WHATSAPP_TEST_BASE_URL'))      define('WHATSAPP_TEST_BASE_URL', '');
-if (!defined('WHATSAPP_TEST_API_KEY'))       define('WHATSAPP_TEST_API_KEY', '');
-if (!defined('WHATSAPP_TEST_PHONE_NUMBER'))  define('WHATSAPP_TEST_PHONE_NUMBER', '');
-if (!defined('WHATSAPP_TEST_PHONE_ID'))      define('WHATSAPP_TEST_PHONE_ID', '');
-if (!defined('WHATSAPP_TEST_BUSINESS_ID'))   define('WHATSAPP_TEST_BUSINESS_ID', '');
+if (!defined('WHATSAPP_TEST_BASE_URL'))      define('WHATSAPP_TEST_BASE_URL', env('WHATSAPP_TEST_BASE_URL', ''));
+if (!defined('WHATSAPP_TEST_API_KEY'))       define('WHATSAPP_TEST_API_KEY', env('WHATSAPP_TEST_API_KEY', ''));
+if (!defined('WHATSAPP_TEST_PHONE_NUMBER'))  define('WHATSAPP_TEST_PHONE_NUMBER', env('WHATSAPP_TEST_PHONE_NUMBER', ''));
+if (!defined('WHATSAPP_TEST_PHONE_ID'))      define('WHATSAPP_TEST_PHONE_ID', env('WHATSAPP_TEST_PHONE_ID', ''));
+if (!defined('WHATSAPP_TEST_BUSINESS_ID'))   define('WHATSAPP_TEST_BUSINESS_ID', env('WHATSAPP_TEST_BUSINESS_ID', ''));
 
 // ── PRODUCTION credentials ─────────────────────────────────────────
-if (!defined('WHATSAPP_PROD_BASE_URL'))      define('WHATSAPP_PROD_BASE_URL', '');
-if (!defined('WHATSAPP_PROD_API_KEY'))       define('WHATSAPP_PROD_API_KEY', '');
-if (!defined('WHATSAPP_PROD_PHONE_NUMBER'))  define('WHATSAPP_PROD_PHONE_NUMBER', '');
-if (!defined('WHATSAPP_PROD_PHONE_ID'))      define('WHATSAPP_PROD_PHONE_ID', '');
-if (!defined('WHATSAPP_PROD_BUSINESS_ID'))   define('WHATSAPP_PROD_BUSINESS_ID', '');
+if (!defined('WHATSAPP_PROD_BASE_URL'))      define('WHATSAPP_PROD_BASE_URL', env('WHATSAPP_PROD_BASE_URL', ''));
+if (!defined('WHATSAPP_PROD_API_KEY'))       define('WHATSAPP_PROD_API_KEY', env('WHATSAPP_PROD_API_KEY', ''));
+if (!defined('WHATSAPP_PROD_PHONE_NUMBER'))  define('WHATSAPP_PROD_PHONE_NUMBER', env('WHATSAPP_PROD_PHONE_NUMBER', ''));
+if (!defined('WHATSAPP_PROD_PHONE_ID'))      define('WHATSAPP_PROD_PHONE_ID', env('WHATSAPP_PROD_PHONE_ID', ''));
+if (!defined('WHATSAPP_PROD_BUSINESS_ID'))   define('WHATSAPP_PROD_BUSINESS_ID', env('WHATSAPP_PROD_BUSINESS_ID', ''));
 
 // ── Webhook ─────────────────────────────────────────────────────────
 // Used to verify the BSP webhook handshake. Pick a long random string.
-if (!defined('WHATSAPP_WEBHOOK_VERIFY_TOKEN')) define('WHATSAPP_WEBHOOK_VERIFY_TOKEN', '');
+if (!defined('WHATSAPP_WEBHOOK_VERIFY_TOKEN')) define('WHATSAPP_WEBHOOK_VERIFY_TOKEN', env('WHATSAPP_WEBHOOK_VERIFY_TOKEN', ''));
 // HMAC secret the BSP signs payloads with. Filled in when client provides it.
-if (!defined('WHATSAPP_WEBHOOK_SECRET'))       define('WHATSAPP_WEBHOOK_SECRET', '');
+if (!defined('WHATSAPP_WEBHOOK_SECRET'))       define('WHATSAPP_WEBHOOK_SECRET', env('WHATSAPP_WEBHOOK_SECRET', ''));
 
 // ── Policy + storage ───────────────────────────────────────────────
-if (!defined('WHATSAPP_MESSAGING_WINDOW_HOURS')) define('WHATSAPP_MESSAGING_WINDOW_HOURS', 24);
-if (!defined('WHATSAPP_DEFAULT_LANGUAGE'))       define('WHATSAPP_DEFAULT_LANGUAGE', 'en');
-if (!defined('WHATSAPP_MEDIA_STORAGE_PATH'))     define('WHATSAPP_MEDIA_STORAGE_PATH', __DIR__ . '/../uploads/whatsapp/');
+if (!defined('WHATSAPP_MESSAGING_WINDOW_HOURS')) define('WHATSAPP_MESSAGING_WINDOW_HOURS', env_int('WHATSAPP_MESSAGING_WINDOW_HOURS', 24));
+if (!defined('WHATSAPP_DEFAULT_LANGUAGE'))       define('WHATSAPP_DEFAULT_LANGUAGE', env('WHATSAPP_DEFAULT_LANGUAGE', 'en'));
+if (!defined('WHATSAPP_MEDIA_STORAGE_PATH'))     define('WHATSAPP_MEDIA_STORAGE_PATH', env('WHATSAPP_MEDIA_STORAGE_PATH', __DIR__ . '/../data/uploads/whatsapp/'));
 
 /**
  * Helper: returns the active credential set based on WHATSAPP_ENV.

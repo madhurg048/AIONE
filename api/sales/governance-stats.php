@@ -5,9 +5,14 @@
  * renewal outlook. Admin + managers only (company-wide aggregates).
  */
 require_once __DIR__ . '/_bootstrap.php';
-require_once __DIR__ . '/_escalation_engine.php';
 require_login();
-if (!can_manage_all_records()) fail('Governance stats are for managers and admins', 403);
+// Org-wide governance KPIs (SLA misses, compliance registry, settlements) belong to the
+// ADMIN dashboard's abstraction level: admin, dept heads and Board — not team leads,
+// whose dashboards are team-scoped.
+if (current_role() !== 'admin' && payg_role_tier(current_role()) < PAYG_TIER_HEAD
+    && !employee_in_full_access_group()) {
+    fail('Governance stats are for heads, admins and the Board', 403);
+}
 $db = db();
 
 /* ---- SLA / TAT ---- */
@@ -35,47 +40,12 @@ $highTat = $db->query("SELECT t.task_type,
       GROUP BY t.task_type ORDER BY avg_age_h DESC LIMIT 8")->fetchAll();
 
 /* ---- escalations ---- */
-$esc = $db->query("SELECT COUNT(*) total_30d, SUM(status='open') open_now
+$esc = $db->query("SELECT COUNT(*) total_30d, SUM(status='open') open_now,
+        SUM(status='open' AND level>=2) at_level2_plus
       FROM task_escalations WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)")->fetch();
 
-/*
- * How many open escalations are one hop from the admin panel?
- *
- * A raw `level >= 2` count is only a proxy: the chain length is per-employee
- * (escalation_matrix overrides, short reporting lines), so L2 may already BE the
- * admin for one rep and still be four hops away for another. Walk each
- * assignee's real chain instead and compare against where the admin sits.
- * Chains are cached per assignee — a handful of lookups, not one per row.
- */
-$adminEmp = escalation_admin_employee($db);
-$openEsc = $db->query("SELECT te.level, te.to_employee_id, t.assigned_to
-      FROM task_escalations te JOIN tasks t ON t.id = te.task_id
-      WHERE te.status='open'")->fetchAll(PDO::FETCH_ASSOC);
-
-$chainCache = [];
-$nearAdmin = 0;   // next hop lands on the admin
-$atAdmin   = 0;   // already sitting with the admin
-foreach ($openEsc as $row) {
-    if ($adminEmp && (int)$row['to_employee_id'] === $adminEmp) { $atAdmin++; continue; }
-    $assignee = (int)$row['assigned_to'];
-    if (!$assignee) continue;
-    if (!isset($chainCache[$assignee])) $chainCache[$assignee] = escalation_chain($db, $assignee);
-    // the level at which this assignee's chain terminates at the admin
-    $adminLevel = null;
-    foreach ($chainCache[$assignee] as $hop) {
-        if (!empty($hop['is_admin'])) { $adminLevel = (int)$hop['level']; break; }
-    }
-    if ($adminLevel === null) continue;              // chain never reaches an admin
-    if ($adminLevel - (int)$row['level'] <= 1) $nearAdmin++;
-}
-$esc['at_admin']   = $atAdmin;
-$esc['near_admin'] = $nearAdmin;                     // one more breach and the admin owns it
-
-/* ---- settlements in flight ---- */
-$settle = $db->query("SELECT SUM(status='pending_check') to_check, SUM(status='checked') to_approve,
-        SUM(status='approved') to_pay,
-        SUM(CASE WHEN status IN('pending_check','checked','approved') THEN net_amount ELSE 0 END) in_flight_amt
-      FROM settlements")->fetch();
+// Settlements were removed from the product (2026-08-06). The tables remain for
+// history; the KPI, page, API and nav entry are disabled.
 
 /* ---- compliance outlook ---- */
 $comp = $db->query("SELECT COUNT(*) total,
@@ -103,7 +73,6 @@ ok([
     'sla_missed' => $slaMissed,
     'high_tat'   => $highTat,
     'escalations'=> $esc,
-    'settlements'=> $settle,
     'compliance' => $comp,
     'upcoming'   => $upcoming,
 ]);

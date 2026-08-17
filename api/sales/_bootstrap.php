@@ -64,10 +64,30 @@ function require_login(): void
     }
 }
 
-/** Row-level "sees everyone [in their scope], not just their own records" — admin, dept heads + dept managers. */
+/** Row-level "sees everyone [in their scope], not just their own records" — admin, dept heads + dept managers, and Board members. */
 function can_manage_all_records(): bool
 {
-    return payg_role_can(current_role(), 'records_all');
+    return payg_role_can(current_role(), 'records_all') || employee_in_full_access_group();
+}
+
+/**
+ * True when the current employee belongs to an active FULL-ACCESS group (emp_groups.grant_all,
+ * e.g. "Board"). Such members get every module and org-wide record visibility regardless of
+ * their role — the group is the access profile. Cached per request.
+ */
+function employee_in_full_access_group(): bool
+{
+    static $cache = null;
+    if ($cache !== null) return $cache;
+    $me = current_employee_id();
+    if (!$me) return $cache = false;
+    try {
+        $s = db()->prepare("SELECT COUNT(*) FROM emp_group_members m
+                              JOIN emp_groups g ON g.id=m.group_id
+                             WHERE m.employee_id=? AND g.is_active=1 AND g.grant_all=1");
+        $s->execute([$me]);
+        return $cache = ((int)$s->fetchColumn() > 0);
+    } catch (Throwable $e) { return $cache = false; }
 }
 
 /* ---------------------------------------------------------------- *
@@ -164,11 +184,55 @@ function manager_subtree_ids(int $rootId): array
  * control (self + subtree); an Exec sees only their own. This is the single source of truth
  * for record scoping — owner_scope()/owner_scope_inline()/assert_can_see() all read it.
  */
+/**
+ * Per-request scope override: an endpoint that is legitimately org-wide for a
+ * capability its callers hold (e.g. reports.php for HR's kpi_govern) can lift
+ * row scoping for THIS request only, instead of widening the role globally.
+ */
+function payg_scope_override(?bool $set = null): bool
+{
+    static $v = false;
+    if ($set !== null) $v = $set;
+    return $v;
+}
+
+/**
+ * Everyone in a department: employees filed under it (org-master string) plus anyone
+ * holding one of that department's roles (covers staff whose department field is
+ * still blank). Cached per request.
+ */
+function payg_dept_staff_ids(string $dept): array
+{
+    static $cache = [];
+    if (isset($cache[$dept])) return $cache[$dept];
+    $roles = array_keys(array_filter(payg_roles(), fn($r) => ($r['dept'] ?? null) === $dept));
+    $roleIn = $roles ? implode(',', array_map(fn($r) => db()->quote($r), $roles)) : "''";
+    $s = db()->prepare("SELECT DISTINCT e.id FROM employees e
+                          LEFT JOIN sales_users su ON su.employee_id = e.id AND su.is_active = 1
+                         WHERE e.department = ? OR su.role IN ($roleIn)");
+    $s->execute([$dept]);
+    return $cache[$dept] = array_map('intval', $s->fetchAll(PDO::FETCH_COLUMN));
+}
+
+/**
+ * The data-abstraction ladder (who sees whose records):
+ *   admin / Board (full-access group)  -> everything, org-wide
+ *   *_head                             -> their whole DEPARTMENT's staff
+ *   dept manager / team lead           -> themselves + their reporting line
+ *   executive                          -> own records only
+ */
 function visible_owner_ids(): ?array
 {
+    if (payg_scope_override()) return null;                     // endpoint-declared org-wide view
     $role = current_role();
-    if (payg_role_tier($role) >= PAYG_TIER_HEAD) return null;   // *_head + admin see everything
+    if ($role === 'admin') return null;                         // admin: global
+    if (employee_in_full_access_group()) return null;           // Board: full record visibility
     $me = current_employee_id() ?: -1;
+    if (payg_role_tier($role) >= PAYG_TIER_HEAD) {              // dept head: their department
+        $dept = payg_role_dept($role);
+        if (!$dept) return null;
+        return array_values(array_unique(array_merge([$me], payg_dept_staff_ids($dept))));
+    }
     if (payg_role_can($role, 'records_all')) {                  // dept manager: own + reports
         return array_values(array_unique(array_merge([$me], manager_subtree_ids($me))));
     }
@@ -296,6 +360,8 @@ function require_module(string $moduleKey): void
         $db = db();
         $any = (int)$db->query("SELECT COUNT(*) FROM role_access WHERE role=" . $db->quote($role))->fetchColumn();
         if ($any === 0) return;   // unconfigured role -> allow (matches nav behaviour)
+        // a full-access group (Board) opens every module
+        if (employee_in_full_access_group()) return;
         $s = $db->prepare("SELECT can_access FROM role_access WHERE role=? AND module_key=?");
         $s->execute([$role, $moduleKey]);
         if ((int)$s->fetchColumn() === 1) return;
@@ -337,6 +403,9 @@ function ok($data = [], array $extra = []): void
 
 function fail(string $msg, int $code = 400): void
 {
+    // Bulk endpoints set this flag to turn hard exits into catchable per-row errors
+    // (a single bad CSV row must not abort the whole batch).
+    if (!empty($GLOBALS['PAYG_FAIL_THROWS'])) throw new RuntimeException($msg);
     http_response_code($code);
     echo json_encode(['success' => false, 'error' => $msg]);
     exit;

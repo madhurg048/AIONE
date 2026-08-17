@@ -72,16 +72,6 @@ function liveChatIconHtml(leadId, chatStatus, extraCls) {
   const dot = s.dot ? `<span class="absolute -top-1 -right-1 w-2 h-2 ${s.dot} rounded-full"></span>` : '';
   return `<button onclick="liveChatLead(${leadId})" title="${esc(s.title)}" class="relative ${extraCls||''} ${s.cls}"><i class="fa-solid fa-comments"></i>${dot}</button>`;
 }
-// A callback request is ticket-only by design (chatbot-ticket.php never opens a chat session for
-// assist_type='callback'), so a live-chat icon on the row would only ever *start* a brand-new chat
-// the customer never asked for — and push the request into the Live Chats queue. Callback rows get
-// the customer-info button in its place; every other request keeps the chat icon.
-const isCallback = t => t.assist_type === 'callback';
-function contactChannelIconHtml(t) {
-  return isCallback(t)
-    ? `<button onclick="showCustomerInfo(${t.id})" title="Customer info" class="text-blue-600 hover:text-blue-700 ml-1"><i class="fa-solid fa-circle-info"></i></button>`
-    : liveChatIconHtml(t.lead_id, t.chat_status, 'ml-1');
-}
 const SOURCE_ICON = { chatbot: 'fa-robot', itsm: 'fa-headset', web: 'fa-globe', service_lead: 'fa-user-plus' };
 // A service-captured sales enquiry is a lead, not a support channel — label it that way rather
 // than leaking the internal source key ('service_lead') next to chatbot/whatsapp/call.
@@ -118,15 +108,11 @@ async function load(){
     if (sts.length) { document.getElementById('fStatus').innerHTML = '<option value="">All status</option>' + sts.map(x=>`<option>${esc(x)}</option>`).join(''); _statusesLoaded = true; }
   }
   document.getElementById('rows').innerHTML = TICKETS.map(t=>{
-    const phoneLine = t.customer_mobile ? `<br>
+    const contact = t.customer_email || t.customer_mobile ? `${esc(t.customer_email||'')}${t.customer_mobile?`<br>
       <a href="tel:${(t.customer_mobile||'').replace(/[^0-9+]/g,'')}" class="text-indigo-600 hover:underline" title="Call from this device"><i class="fa-solid fa-phone text-[10px]"></i> ${esc(t.customer_mobile)}</a>
       ${t.lead_id?`<button onclick="callLead(${t.lead_id})" title="Cloud call" class="text-blue-600 hover:text-blue-700 ml-1"><i class="fa-solid fa-headset text-[11px]"></i></button>
-      <button onclick="waLead(${t.lead_id})" title="WhatsApp" class="text-green-600 hover:text-green-700 ml-1"><i class="fa-brands fa-whatsapp"></i></button>`:''}` : '';
-    // The info button hangs off the row itself, not off lead_id/mobile, so a callback with no
-    // phone number on file still exposes its details — this is now its only entry point.
-    const contact = (t.customer_email || t.customer_mobile)
-      ? `${esc(t.customer_email||'')}${phoneLine}${contactChannelIconHtml(t)}`
-      : (isCallback(t) ? contactChannelIconHtml(t) : '—');
+      <button onclick="waLead(${t.lead_id})" title="WhatsApp" class="text-green-600 hover:text-green-700 ml-1"><i class="fa-brands fa-whatsapp"></i></button>
+      ${liveChatIconHtml(t.lead_id, t.chat_status, 'ml-1')}`:''}`:''}` : '—';
     return `<tr>
       <td class="font-medium">${esc(t.customer_name||'—')}</td>
       <td class="text-gray-500">${esc(t.customer_company||t.merchant_name||'—')}</td>
@@ -143,6 +129,7 @@ async function load(){
       <td class="rowact whitespace-nowrap">
         <button onclick="editTicket(${t.id})" title="Edit" class="text-gray-400 hover:text-indigo-600"><i class="fa-solid fa-pen"></i></button>
         <button onclick="openTransfer(${t.id})" title="Transfer to concerned team/person" class="text-gray-400 hover:text-amber-600 ml-1"><i class="fa-solid fa-right-left"></i></button>
+        ${t.assist_type==='callback'?`<button onclick="showCustomerInfo(${t.id})" title="Customer info" class="text-gray-400 hover:text-blue-600 ml-1"><i class="fa-solid fa-circle-info"></i></button>`:''}
         ${isDraftLead(t)?`<button onclick="sendDraftToSales(${t.lead_id})" title="Send this draft to Sales" class="text-gray-400 hover:text-green-600 ml-1"><i class="fa-solid fa-paper-plane"></i></button>`:''}
       </td>
     </tr>`;
@@ -214,19 +201,6 @@ function infoRow(label, value) {
     <div class="col-span-2 font-medium text-gray-800 break-words">${esc(String(value))}</div>
   </div>`;
 }
-// Splits each source on blank lines, drops empty/repeated paragraphs (case- and whitespace-
-// insensitive), and rejoins in first-seen order.
-function dedupeBlocks(sources) {
-  const seen = new Set(), out = [];
-  sources.filter(Boolean).forEach(src => String(src).split(/\n\s*\n/).forEach(block => {
-    const b = block.trim();
-    if (!b) return;
-    const key = b.toLowerCase().replace(/\s+/g, ' ');
-    if (seen.has(key)) return;
-    seen.add(key); out.push(b);
-  }));
-  return out.join('\n\n');
-}
 async function showCustomerInfo(id) {
   const t = TICKETS.find(x => +x.id === +id);
   if (!t) return;
@@ -236,11 +210,7 @@ async function showCustomerInfo(id) {
   }
   const altMobile = lead && lead.phone && lead.phone !== t.customer_mobile ? lead.phone : '';
   const customerId = t.lead_id ? ('LEAD-' + t.lead_id) : (t.merchant_id ? ('MER-' + t.merchant_id) : '');
-  // The customer types their message once, but it is stored twice — chatbot-ticket.php writes it
-  // to BOTH crm_tickets.last_update_note and leads.description (and appends another copy to the
-  // lead on every repeat request within the 6h reuse window). Concatenating the three sources
-  // verbatim echoed the same paragraph two or more times here. De-dupe block by block instead.
-  const enquiry = dedupeBlocks([t.subject, t.last_update_note, lead && lead.description]);
+  const enquiry = [t.subject, t.last_update_note, lead && lead.description].filter(Boolean).join('\n\n');
   openModal(`
     <div class="text-xs">
       ${infoRow('Customer Name', t.customer_name)}

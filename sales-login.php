@@ -8,9 +8,9 @@ $csrfToken = payg_csrf_token();
 <html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PayG Sales Cloud — Sign in</title>
+  <title>AI One Sales Cloud — Sign in</title>
   <meta name="csrf-token" content="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
-  <link rel="icon" type="image/png" href="/payg/public/images/PayG-Dark.svg">
+  <link rel="icon" type="image/svg+xml" href="public/images/PayG-Dark.svg">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
@@ -26,13 +26,11 @@ $csrfToken = payg_csrf_token();
 
       <!-- Logo + title -->
       <div class="text-center mb-5">
-        <div class="flex justify-center mb-3">
-          <div class="w-16 h-16 flex items-center justify-center">
-            <img src="/payg/public/images/PayG-Dark.svg" alt="PayG Logo" class="h-12 object-contain"
-                 onerror="this.outerHTML='<div class=&quot;text-2xl font-bold text-indigo-600&quot;>PayG</div>'">
-          </div>
+        <div class="flex items-center justify-center gap-3 mb-3 whitespace-nowrap">
+          <img src="public/images/PayG-Dark.svg" alt="Logo" class="h-9 w-auto object-contain shrink-0">
+          <span class="text-2xl font-bold text-gray-900 tracking-tight whitespace-nowrap">AI One</span>
         </div>
-        <h1 class="text-xl font-bold text-gray-800">Welcome to PayG Sales Cloud</h1>
+        <h1 class="text-xl font-bold text-gray-800">Welcome to AI One Sales Cloud</h1>
         <p class="text-xs text-gray-500 mt-1">Sign in to continue</p>
       </div>
 
@@ -40,10 +38,14 @@ $csrfToken = payg_csrf_token();
       <div class="bg-white rounded-xl shadow-2xl p-6">
         <form id="loginForm" onsubmit="return doLogin(event)" class="space-y-4">
           <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">Username</label>
+            <div class="flex items-center justify-between mb-1">
+              <label id="idLabel" class="block text-xs font-semibold text-gray-600">Email</label>
+              <button type="button" id="idSwitch" onclick="switchIdMode()"
+                      class="text-xs font-semibold text-indigo-600 hover:text-indigo-800">Use phone instead</button>
+            </div>
             <div class="relative">
-              <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><i class="fas fa-user text-sm"></i></span>
-              <input id="username" autocomplete="username" required placeholder="Enter username"
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><i id="idIcon" class="fas fa-envelope text-sm"></i></span>
+              <input id="username" autocomplete="username" required placeholder="you@company.com" inputmode="email"
                      class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200">
             </div>
           </div>
@@ -151,6 +153,20 @@ async function apiPost(url, body) {
   return r.json();
 }
 function post(action, body) { return apiPost('api/sales/auth.php?action=' + action, body); }
+/* Email (default) ⇄ phone login switch. Purely presentational — the server accepts
+   email, 10-digit phone, or a plain username in the same field either way. */
+let idMode = 'email';
+function switchIdMode() {
+  idMode = idMode === 'email' ? 'phone' : 'email';
+  const em = idMode === 'email';
+  document.getElementById('idLabel').textContent = em ? 'Email' : 'Phone number';
+  document.getElementById('idSwitch').textContent = em ? 'Use phone instead' : 'Use email instead';
+  document.getElementById('idIcon').className = 'fas ' + (em ? 'fa-envelope' : 'fa-mobile-screen') + ' text-sm';
+  const u = document.getElementById('username');
+  u.placeholder = em ? 'you@company.com' : '98765 43210';
+  u.inputMode = em ? 'email' : 'tel';
+  u.value = ''; u.focus();
+}
 function togglePw() {
   const p = document.getElementById('password'), e = document.getElementById('pwEye');
   const show = p.type === 'password'; p.type = show ? 'text' : 'password';
@@ -159,6 +175,13 @@ function togglePw() {
 async function doLogin(e) {
   if (e && e.preventDefault) e.preventDefault();
   const err = document.getElementById('err'); err.classList.add('hidden');
+  // Re-sync the CSRF token first: a login page left open past the session's
+  // lifetime holds a stale token and would otherwise fail with "CSRF validation
+  // failed" — this makes the age of the page irrelevant.
+  try {
+    const t = await (await fetch('api/sales/auth.php?action=csrf', { credentials: 'same-origin' })).json();
+    if (t.success && t.data && t.data.csrf) document.querySelector('meta[name="csrf-token"]').content = t.data.csrf;
+  } catch (_) {}
   const res = await post('login', { username: username.value, password: password.value });
   if (res.success) { window.location.href = res.data.redirect; }
   else {

@@ -6,6 +6,7 @@
  */
 require_once __DIR__ . '/_bootstrap.php';
 require_login();
+require_module('leads');
 $db = db();
 
 if (method() !== 'POST') fail('POST required', 405);

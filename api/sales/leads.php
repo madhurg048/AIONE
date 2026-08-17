@@ -10,7 +10,9 @@
 require_once __DIR__ . '/_bootstrap.php';
 require_once __DIR__ . '/_automation_engine.php';
 require_once __DIR__ . '/_task_events.php';
+require_once __DIR__ . '/_ai.php';   // dupcheck's AI-phrased duplicate warning
 require_login();
+require_module('leads');
 $db = db();
 
 /* ---------------- EMPLOYEES (for bulk owner assignment) ---------------- */
@@ -96,6 +98,93 @@ if (method() === 'POST' && isset($_GET['bulk'])) {
         ok(['deleted' => $st->rowCount()]);
     }
     fail('Unknown bulk action');
+}
+
+/* ---------------- AUTO-ASSIGN SWITCH (team leads) ---------------- */
+if (method() === 'GET' && isset($_GET['assign_settings'])) {
+    $cfg = lead_assign_settings($db);
+    $resp = ['auto_assign' => (int)$cfg['auto_assign'], 'group_id' => $cfg['group_id'] ? (int)$cfg['group_id'] : null,
+             'can_manage' => can_manage_all_records()];
+    if ($resp['can_manage']) {
+        $resp['groups'] = $db->query("SELECT g.id, g.name,
+                    (SELECT COUNT(*) FROM emp_group_members m
+                      JOIN sales_users su ON su.employee_id=m.employee_id AND su.is_active=1
+                     WHERE m.group_id=g.id) AS members
+                 FROM emp_groups g WHERE g.is_active=1 ORDER BY g.name")->fetchAll();
+        if ($resp['group_id']) {
+            $n = $db->prepare("SELECT name FROM emp_groups WHERE id=?");
+            $n->execute([$resp['group_id']]);
+            $resp['group_name'] = $n->fetchColumn() ?: null;
+        }
+    }
+    ok($resp);
+}
+if (method() === 'POST' && ($_GET['action'] ?? '') === 'assign_settings') {
+    if (!can_manage_all_records()) fail('Only team leads / managers can change lead assignment', 403);
+    $b = body();
+    $on = (int)!empty($b['auto_assign']);
+    $gid = (int)($b['group_id'] ?? 0) ?: null;
+    if ($on && !$gid) fail('Pick the group whose members should receive leads');
+    if ($gid) {
+        $chk = $db->prepare("SELECT COUNT(*) FROM emp_group_members m
+                              JOIN sales_users su ON su.employee_id=m.employee_id AND su.is_active=1
+                             WHERE m.group_id=?");
+        $chk->execute([$gid]);
+        if (!(int)$chk->fetchColumn()) fail('That group has no active members to assign leads to');
+    }
+    $db->prepare("UPDATE lead_assign_settings SET auto_assign=?, group_id=?, updated_by=? WHERE id=1")
+       ->execute([$on, $gid, current_employee_id() ?: null]);
+    ok(['auto_assign' => $on, 'group_id' => $gid]);
+}
+
+/* ---------------- DUPLICATE CHECK (while entering a new lead) ---------------- */
+if (method() === 'GET' && isset($_GET['dupcheck'])) {
+    $company = trim((string)($_GET['company'] ?? ''));
+    $email   = trim((string)($_GET['email'] ?? ''));
+    $phone   = preg_replace('/\D+/', '', (string)($_GET['phone'] ?? ''));
+    $name    = trim((string)($_GET['name'] ?? ''));
+    if ($company === '' && $email === '' && $phone === '' && $name === '') ok(['matches' => []]);
+
+    // deterministic candidates — the evidence; AI only phrases the warning
+    $where = []; $args = []; $why = [];
+    if ($company !== '') {
+        // normalize away punctuation + common suffixes so "TechnoSoft Pvt. Ltd." ≈ "Technosoft"
+        $norm = trim(preg_replace('/\b(pvt|private|ltd|limited|llp|inc|co|company|technologies|solutions)\b/i', '',
+                     preg_replace('/[^a-z0-9 ]/i', '', strtolower($company))));
+        if ($norm !== '') { $where[] = "REPLACE(LOWER(l.company),'.','') LIKE ?"; $args[] = '%' . implode('%', array_slice(explode(' ', $norm), 0, 3)) . '%'; $why[] = 'company'; }
+    }
+    if ($email !== '') { $where[] = "LOWER(l.email) = ?"; $args[] = strtolower($email); $why[] = 'email'; }
+    if ($phone !== '' && strlen($phone) >= 6) {
+        $where[] = "(REPLACE(REPLACE(REPLACE(COALESCE(l.phone,''),' ',''),'-',''),'+','') LIKE ? OR
+                     REPLACE(REPLACE(REPLACE(COALESCE(l.mobile,''),' ',''),'-',''),'+','') LIKE ?)";
+        $args[] = '%' . substr($phone, -10); $args[] = '%' . substr($phone, -10); $why[] = 'phone';
+    }
+    if ($name !== '' && $company === '') { $where[] = "SOUNDEX(CONCAT_WS(' ', l.first_name, l.last_name)) = SOUNDEX(?)"; $args[] = $name; $why[] = 'contact name'; }
+    if (!$where) ok(['matches' => []]);
+
+    $s = $db->prepare("SELECT l.id, l.first_name, l.last_name, l.company, l.email, l.phone, l.mobile,
+                              l.lead_status, l.created_at, e.full_name AS owner_name
+                         FROM leads l LEFT JOIN employees e ON e.id = l.owner_id
+                        WHERE " . implode(' OR ', $where) . "
+                        ORDER BY l.created_at DESC LIMIT 5");
+    $s->execute($args);
+    $matches = $s->fetchAll();
+    $resp = ['matches' => $matches, 'checked' => $why];
+    if ($matches) {
+        // AI phrasing on top of the deterministic evidence; deterministic text if AI is down
+        $ev = implode('; ', array_map(fn($m) =>
+            "#{$m['id']} " . trim(($m['first_name'] ?? '') . ' ' . ($m['last_name'] ?? '')) .
+            ' @ ' . ($m['company'] ?: '—') . " [{$m['lead_status']}, owner " . ($m['owner_name'] ?: 'unassigned') . ']', $matches));
+        $resp['warning'] = count($matches) . ' possible duplicate' . (count($matches) > 1 ? 's' : '') .
+                           ' matched on ' . implode(' / ', $why) . '.';
+        try {
+            $ai = crm_ai_call("A user is typing a NEW crm lead: company=\"$company\" contact=\"$name\" email=\"$email\" phone=\"$phone\". " .
+                "EXISTING leads that look similar: $ev. In ONE short sentence, warn whether this is likely a duplicate and which existing lead to check first. No preamble.", 'short');
+            $txt = trim((string)($ai['response'] ?? ($ai['text'] ?? '')));
+            if ($txt !== '') $resp['warning'] = $txt;
+        } catch (Throwable $e) { /* deterministic warning stands */ }
+    }
+    ok($resp);
 }
 
 /* ---------------- METRICS (Lead metrics dashboard) ---------------- */
@@ -203,6 +292,19 @@ if (method() === 'GET' && isset($_GET['id'])) {
         }
     } catch (Throwable $e) { /* non-fatal — handoff panel just won't show */ }
 
+    // Stale-reassignment warning: surface the same "Reassign stale leads" rule the cron sweep
+    // uses (see lead_stale_threshold() in _automation_engine.php) so a non-technical rep/manager
+    // can see, right on the lead, that it'll move to someone else if left untouched — instead of
+    // that only being discoverable after it already happened.
+    $st = lead_stale_threshold($db);
+    $lead['stale_idle_days'] = null;
+    $lead['stale_days_left'] = null;
+    if ($st['active'] && in_array($lead['lead_status'], $st['statuses'], true)) {
+        $idle = (int)((strtotime('now') - strtotime($lead['updated_at'])) / 86400);
+        $lead['stale_idle_days'] = $idle;
+        $lead['stale_days_left'] = max(0, $st['days'] - $idle);
+    }
+
     ok($lead);
 }
 
@@ -283,7 +385,6 @@ if (method() === 'GET') {
                    ct.last_update_note AS handoff_note, ct.transferred_by_name AS handoff_by,
                    ct.source AS ticket_source,
                    COALESCE(ct.subject, NULL) AS ticket_subject,
-                   ct.assist_type AS ticket_assist_type,
                    COALESCE(ct.assigned_to_name, e.full_name) AS owner_name,
                    COALESCE(ct.created_at, l.created_at) AS display_created_at,
                    COALESCE(NULLIF(ct.customer_name,''),
@@ -298,8 +399,28 @@ if (method() === 'GET') {
             $joined ORDER BY $sort $dir, l.id DESC LIMIT $per OFFSET $off";
     $stmt = $db->prepare($sql);
     $stmt->execute($args);
-    ok($stmt->fetchAll(), ['total' => $total, 'page' => $page, 'per' => $per,
-                            'pages' => (int)ceil($total / $per)]);
+    $rows = $stmt->fetchAll();
+
+    // Same stale-reassignment warning as the single-lead view (see there for why) — computed
+    // here per row so the Leads list can badge leads approaching auto-reassignment without a
+    // separate request per row.
+    $st = lead_stale_threshold($db);
+    if ($st['active']) {
+        $now = strtotime('now');
+        foreach ($rows as &$r) {
+            $r['stale_idle_days'] = null;
+            $r['stale_days_left'] = null;
+            if (in_array($r['lead_status'], $st['statuses'], true)) {
+                $idle = (int)(($now - strtotime($r['updated_at'])) / 86400);
+                $r['stale_idle_days'] = $idle;
+                $r['stale_days_left'] = max(0, $st['days'] - $idle);
+            }
+        }
+        unset($r);
+    }
+
+    ok($rows, ['total' => $total, 'page' => $page, 'per' => $per,
+               'pages' => (int)ceil($total / $per)]);
 }
 
 /* ---------------- CREATE ---------------- */
@@ -352,14 +473,21 @@ if (method() === 'POST') {
            ->execute([lead_completeness_score($b), $newId]);
     }
 
-    // Round-robin unless an owner was explicitly chosen. Assignment lives here rather than in
-    // the 'Round-robin assign new leads' rule (which now only notifies) so it can't be turned
-    // off by toggling a rule — and it keeps the SLS ticket's owner in step with the lead's,
-    // which the rule could never do (it only ever touched the lead, leaving every SLS ticket
-    // showing no owner at all). See sales_assign_next() in _automation_engine.php.
-    $owner = null;
-    if (!$explicitOwner) {
-        $owner = sales_assign_next($db, $newId, $newTicketId ?? null, $vertical);
+    // Assignment (team-lead controlled, phase60):
+    //   * owner explicitly chosen        -> honoured as before
+    //   * lead_source is 'manual'        -> whoever typed it in keeps it, regardless of the
+    //     auto-assign switch (the INSERT already set owner = creator); we only sync the SLS
+    //     ticket's owner to match. The switch is meant for routing inbound queue sources
+    //     (chat/web/etc.), not for reassigning a rep/manager's own manual entry away from them.
+    //   * auto-assign switch ON (non-manual source) -> lowest-occupied member of the pool group
+    //   * auto-assign switch OFF                    -> whoever brings the lead keeps it
+    // Assignment lives here rather than in an automation rule so a rule toggle can't
+    // break it, and so the SLS ticket's owner stays in step with the lead's.
+    $assignCfg = lead_assign_settings($db);
+    $isManualEntry = ($b['lead_source'] ?? 'manual') === 'manual';
+    if (!$explicitOwner && !$isManualEntry && !empty($assignCfg['auto_assign'])) {
+        $picked = sales_assign_next($db, $newId, $newTicketId ?? null, $vertical);
+        if ($picked) $owner = $picked['id'];
     } elseif (!empty($newTicketId)) {
         $nm = $db->prepare("SELECT full_name FROM employees WHERE id=?");
         $nm->execute([$owner]);

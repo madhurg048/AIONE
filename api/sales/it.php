@@ -49,4 +49,29 @@ $out = [
         'tickets_open'       => (int)$one("SELECT COUNT(*) FROM crm_tickets WHERE status NOT IN('closed','resolved') OR status IS NULL"),
     ],
 ];
+
+// ---- MY TEAM (drill-down for an IT team lead) ----
+// Platform administration above is org-wide because that IS IT's function; the team
+// block is the manager-level abstraction: their own reporting line's workload only.
+if (payg_role_tier(current_role()) === PAYG_TIER_MANAGER) {
+    $teamIds = manager_subtree_ids((int)current_employee_id());
+    if ($teamIds) {
+        $in = implode(',', array_map('intval', $teamIds));
+        $out['team'] = [
+            'members' => $db->query("
+                SELECT e.id, e.full_name, e.designation, e.sub_department,
+                       (SELECT COUNT(*) FROM tasks t WHERE t.assigned_to=e.id AND t.status IN('open','in_progress')) AS open_tasks,
+                       (SELECT COUNT(*) FROM tasks t WHERE t.assigned_to=e.id AND t.status IN('open','in_progress') AND t.sla_due_at<NOW()) AS overdue_tasks,
+                       (SELECT COUNT(*) FROM crm_tickets ct WHERE ct.owner_id=e.id AND (ct.status NOT IN('closed','resolved') OR ct.status IS NULL)) AS open_tickets,
+                       EXISTS(SELECT 1 FROM timesheets ts WHERE ts.employee_id=e.id AND ts.entry_date=CURDATE()) AS timesheet_today
+                  FROM employees e WHERE e.id IN ($in) ORDER BY e.full_name")->fetchAll(),
+            'tickets_open'   => (int)$one("SELECT COUNT(*) FROM crm_tickets WHERE owner_id IN ($in) AND (status NOT IN('closed','resolved') OR status IS NULL)"),
+            'tasks_open'     => (int)$one("SELECT COUNT(*) FROM tasks WHERE assigned_to IN ($in) AND status IN('open','in_progress')"),
+            'escalations_open' => (int)$one("SELECT COUNT(*) FROM task_escalations te
+                                              LEFT JOIN tasks t ON te.entity='task' AND t.id=te.task_id
+                                              LEFT JOIN crm_tickets ct ON te.entity='ticket' AND ct.id=te.task_id
+                                             WHERE te.status='open' AND (te.to_employee_id IN ($in) OR COALESCE(t.assigned_to, ct.owner_id) IN ($in))"),
+        ];
+    }
+}
 ok($out);

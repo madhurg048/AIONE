@@ -8,7 +8,9 @@
  */
 require_once __DIR__ . '/_bootstrap.php';
 require_once __DIR__ . '/_task_events.php';
+require_once __DIR__ . '/_automation_engine.php';
 require_login();
+require_module('leads');
 $db = db();
 $me = current_employee_id();
 
@@ -35,6 +37,19 @@ if (method() === 'GET') {
     // it's assigned to, not a visibility restriction, so any exec in this lead's vertical can
     // open its follow-up history (and act on it from a Leads-page icon), not just its owner.
     assert_can_see_vertical($l['vertical']);
+
+    // Same stale-reassignment warning as leads.php (see lead_stale_threshold()) — this is the
+    // screen a rep actually logs a follow-up from, so it's the most useful place to tell them
+    // "log something now or this moves to someone else."
+    $st = lead_stale_threshold($db);
+    $l['stale_idle_days'] = null;
+    $l['stale_days_left'] = null;
+    if ($st['active'] && in_array($l['lead_status'], $st['statuses'], true)) {
+        $idle = (int)((strtotime('now') - strtotime($l['updated_at'])) / 86400);
+        $l['stale_idle_days'] = $idle;
+        $l['stale_days_left'] = max(0, $st['days'] - $idle);
+    }
+
     $h = $db->prepare("SELECT f.*, e.full_name AS by_name FROM lead_followups f
                        LEFT JOIN employees e ON e.id=f.created_by WHERE f.lead_id=? ORDER BY f.created_at DESC");
     $h->execute([$lid]);

@@ -11,6 +11,7 @@
 require_once __DIR__ . '/_bootstrap.php';
 require_once __DIR__ . '/_incentive_engine.php';
 require_login();
+require_module('merchants');
 $db = db();
 
 /* ---- ACTIVATE (release incentive) ---- */
@@ -31,7 +32,7 @@ if (method() === 'POST' && isset($_GET['activate'])) {
         $db->commit();
         ok(['merchant_id' => $id, 'incentive_booked' => $booked],
            ['message' => $booked > 0 ? 'Activated — ₹' . number_format($booked) . ' incentive accrued to agent'
-                                     : 'Activated (no incentive rule matched)']);
+                                     : 'Activated — incentive is assessed on the quarterly scorecard']);
     } catch (Throwable $e) {
         if ($db->inTransaction()) $db->rollBack();
         fail('Activation failed: ' . $e->getMessage(), 500);

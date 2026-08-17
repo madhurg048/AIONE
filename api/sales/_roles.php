@@ -59,6 +59,11 @@ function payg_roles(): array
 
         'it_manager'      => ['label' => 'IT Manager',       'dept' => 'IT',      'tier' => PAYG_TIER_MANAGER],
         'it'              => ['label' => 'IT',               'dept' => 'IT',      'tier' => PAYG_TIER_EXEC],
+
+        // Finance. The CFO is a Head (owns the function, signs the returns); the
+        // Finance Manager is the maker/checker tier under them.
+        'cfo'             => ['label' => 'CFO',              'dept' => 'Finance', 'tier' => PAYG_TIER_HEAD],
+        'finance_manager' => ['label' => 'Finance Manager',  'dept' => 'Finance', 'tier' => PAYG_TIER_MANAGER],
     ];
 }
 
@@ -140,6 +145,11 @@ function payg_role_caps(): array
 
         'it_manager'      => [],
         'it'              => [],
+
+        // The CFO signs off the compliance cockpit and owns the company's numbers, so
+        // they see every owner's records; the Finance Manager prepares and checks.
+        'cfo'             => ['records_all', 'kpi_govern', 'timesheet_approve_all'],
+        'finance_manager' => ['records_all'],
     ];
 }
 

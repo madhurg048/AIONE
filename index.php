@@ -24,10 +24,8 @@ if (!empty($_SESSION['user'])) {
 }
 
 if (!(getDB() instanceof PDO)) {
-    // The one-shot installer is not shipped to production. A missing DB connection here almost
-    // always means the DB_* environment variables are not set — see .env.example.
-    http_response_code(503);
-    exit('Database unavailable. Check the DB_HOST / DB_NAME / DB_USER / DB_PASS environment variables.');
+    header('Location: sales-setup.php');
+    exit;
 }
 // Guest (not logged in), DB ready -> fall through to the marketing homepage below.
 ?>

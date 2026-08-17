@@ -52,8 +52,9 @@ if (method() === 'POST' && isset($_GET['test'])) {
 
 if (method() === 'POST') {
     $b = body();
-    // voice_url / voice_api_key are no longer written — timesheet voice dictation is retired.
-    // The columns stay in the table so historical values survive; they are simply unused.
+    // voice_url / voice_api_key are intentionally NOT written any more — speech-to-text
+    // has been removed from the product. The columns still exist in the schema so old
+    // rows load, but nothing reads or updates them.
     $db->prepare("UPDATE ai_settings SET box_enabled=?, box_url=?, ai_api_key=?, restart_token=?,
                   cloud_enabled=?, cloud_url=?, cloud_api_key=? WHERE id=1")
        ->execute([

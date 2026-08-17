@@ -8,6 +8,7 @@
  */
 require_once __DIR__ . '/_bootstrap.php';
 require_login();
+require_module('pipeline');
 $db = db();
 
 if (method() === 'GET' && isset($_GET['id'])) {

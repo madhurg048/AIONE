@@ -9,6 +9,9 @@ require_login();
    scoped per-record like leads/deals. Gated via role_access ('reports' module_key),
    which already seeds admin/manager/support_manager=1 and sales_exec/service_exec=0. */
 require_module('reports');
+// HR governs performance company-wide (kpi_govern) — give them the head-level,
+// unrestricted view of these aggregates without widening their role elsewhere.
+if (can_govern_kpi()) payg_scope_override(true);
 $db = db();
 $q = fn($s) => $db->query($s);
 

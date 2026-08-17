@@ -159,6 +159,13 @@ if (method() === 'PATCH') {
     if (!$set) fail('Nothing to update');
     $args[] = $id;
     $db->prepare("UPDATE crm_tickets SET " . implode(',', $set) . " WHERE id=?")->execute($args);
+    // resolving/closing a ticket closes any open SLA escalations riding on it
+    if (isset($b['status']) && in_array($b['status'], ['resolved', 'closed'], true)) {
+        try {
+            $db->prepare("UPDATE task_escalations SET status='resolved', resolved_at=NOW()
+                           WHERE entity='ticket' AND task_id=? AND status='open'")->execute([$id]);
+        } catch (Throwable $e) {}
+    }
     ok(['id' => $id]);
 }
 

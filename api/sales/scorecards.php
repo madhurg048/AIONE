@@ -12,10 +12,16 @@
  *   DELETE scorecards.php?id=<n>             -> remove a draft card
  *
  * Managers/admin define & manage; sales execs may only view (and acknowledge) their own.
+ *
+ * Scoping: a Sales Manager may only touch cards for their own line of control
+ * (scorecard_scope_ids()); Admin/HR/Sales Head/CFO — the kpi_govern holders — are unrestricted.
+ * Lifecycle: only a 'draft' card may be deleted, and a 'locked' card is immutable (weights,
+ * targets, thresholds, actuals, notes) until a governor takes it back off 'locked'.
  */
 require_once __DIR__ . '/_bootstrap.php';
 require_once __DIR__ . '/_incentive_engine.php';
 require_login();
+require_module('scorecards');
 
 $db   = db();
 $role = current_role();
@@ -25,6 +31,43 @@ $meId = current_employee_id();
 // owns their own team's cards. Without this HR could define a company KPA but not the
 // scorecard that measures it — the same question answered two different ways.
 $canManage = $role === 'manager' || can_govern_kpi();
+
+/**
+ * Which employees' scorecards the caller may create, read, edit or delete.
+ *   null            -> unrestricted (kpi_govern: Admin, HR, Sales Head, CFO — the framework owners)
+ *   [self, ...team] -> a Sales Manager: only their own line of control, via employees.manager_id
+ *
+ * This is deliberately NOT visible_owner_ids(): that one scopes *records* (leads/deals), and it
+ * would hand HR — who governs the framework company-wide but owns no sales records — a scope of
+ * only themselves. Governance is a capability question; assignment is a hierarchy question.
+ */
+function scorecard_scope_ids(): ?array
+{
+    if (can_govern_kpi()) return null;
+    $me = current_employee_id() ?: -1;
+    if (current_role() === 'manager') {
+        return array_values(array_unique(array_merge([$me], manager_subtree_ids($me))));
+    }
+    return [$me];
+}
+
+/** 403 unless the caller may assign/administer scorecards for this employee. */
+function assert_scorecard_target(int $empId): void
+{
+    $ids = scorecard_scope_ids();
+    if ($ids !== null && !in_array($empId, $ids, true)) {
+        fail('That employee is not in your team — you can only manage scorecards for your own reports', 403);
+    }
+}
+
+/** SQL fragment scoping a scorecards query to the caller's team; '1' when unrestricted. */
+function scorecard_scope(string $col, array &$args): string
+{
+    $ids = scorecard_scope_ids();
+    if ($ids === null) return '1';
+    $args = array_merge($args, $ids);
+    return "$col IN (" . implode(',', array_fill(0, count($ids), '?')) . ")";
+}
 
 /* ---- high-yield categories (segment mix) ---- */
 const HIGH_YIELD = ['FI', 'NBFC', 'Insurance', 'Education', 'Enterprise'];
@@ -103,7 +146,12 @@ function score_card(array $card, array $lines): array {
         $capped = min($attain, 110);                    // accelerator ceiling for scoring
         $lineScore = $w * $capped / 100;
         $sumW += $w; $score += $lineScore;
-        if ($ln['kpi_code'] === 'gmv')        { $gmvAttain = $attain; $gatePass = $attain >= 100; }
+        // The gate is whatever the line is FLAGGED as (scorecard_lines.is_gate, seeded from
+        // kpi_definitions.is_gate and shown as the red GATE badge in the UI) — not a hardcoded
+        // 'gmv'. Today GMV is the only gate; when governance re-flags one, scoring follows the
+        // flag instead of silently disagreeing with the badge. All gate lines must clear 100%.
+        if (!empty($ln['is_gate']) && $attain < 100) $gatePass = false;
+        if ($ln['kpi_code'] === 'gmv')        { $gmvAttain = $attain; }
         if ($ln['kpi_code'] === 'fee_income') { $feeActual = $a; }
         if ($ln['kpi_code'] === 'governance') { $govActual = $a; }
         $scored[] = ['kpi_code'=>$ln['kpi_code'], 'attain'=>round($attain,1), 'line_score'=>round($lineScore,2)];
@@ -209,14 +257,10 @@ if ($method === 'GET') {
                 JOIN merchants m ON m.id = t.merchant_id
                 WHERE t.status='success' AND t.txn_date BETWEEN ? AND ?";
         $args = [$start . ' 00:00:00', $end . ' 23:59:59'];
-        // a plain manager is scoped to their own team's merchants; governors/admin are unrestricted
-        if ($role === 'manager' && !can_govern_kpi()) {
-            $own = $db->prepare("SELECT e.id FROM employees e
-                                 JOIN sales_users su ON su.employee_id=e.id AND su.is_active=1
-                                 WHERE e.manager_id=? OR e.id=?");
-            $own->execute([$meId, $meId]);
-            $ids = array_map('intval', $own->fetchAll(PDO::FETCH_COLUMN));
-            if (!$ids) { ok(['period' => $period, 'high_yield' => HIGH_YIELD, 'slices' => []]); }
+        // a plain manager is scoped to their own line of control's merchants; governors are not.
+        // Same scope as the scorecard list, so the pie and the table describe the same team.
+        $ids = scorecard_scope_ids();
+        if ($ids !== null) {
             $sql .= " AND m.owner_id IN (" . implode(',', array_fill(0, count($ids), '?')) . ")";
             $args = array_merge($args, $ids);
         }
@@ -239,14 +283,13 @@ if ($method === 'GET') {
 
     if (isset($_GET['team'])) {
         if (!$canManage) fail('Managers only', 403);
-        // assignable = employees with an active sales login; managers see direct reports + unassigned sales execs, admin sees all
+        // assignable = employees with an active sales login, inside the caller's scope.
+        // A Manager gets their reporting line only (previously `OR su.role='sales_exec'` leaked
+        // every sales exec in the company into the picker); governors get everyone.
         $sql = "SELECT e.id, e.full_name, e.designation, su.role
                 FROM employees e JOIN sales_users su ON su.employee_id=e.id AND su.is_active=1";
         $args = [];
-        if ($role === 'manager') {
-            $sql .= " WHERE (e.manager_id=? OR su.role='sales_exec')";
-            $args[] = $meId;
-        }
+        $sql .= " WHERE " . scorecard_scope('e.id', $args);
         $sql .= " ORDER BY e.full_name";
         $st = $db->prepare($sql); $st->execute($args);
         ok(['team' => $st->fetchAll(PDO::FETCH_ASSOC)]);
@@ -263,7 +306,11 @@ if ($method === 'GET') {
         $st->execute([(int)$_GET['id']]);
         $card = $st->fetch(PDO::FETCH_ASSOC);
         if (!$card) fail('Not found', 404);
-        if (!$canManage && (int)$card['employee_id'] !== $meId) fail('Forbidden', 403);
+        if (!$canManage) {
+            if ((int)$card['employee_id'] !== $meId) fail('Forbidden', 403);
+        } else {
+            assert_scorecard_target((int)$card['employee_id']);   // manager: own team only
+        }
         ok(['card' => card_detail($db, $card)]);
     }
 
@@ -274,7 +321,12 @@ if ($method === 'GET') {
             LEFT JOIN employees ab ON ab.id=sc.assigned_by";
     $args = [];
     if (!$canManage) { $sql .= " WHERE sc.employee_id=?"; $args[] = $meId; }
-    elseif ($role === 'manager') { $sql .= " WHERE (sc.assigned_by=? OR e.manager_id=? OR sc.employee_id=?)"; $args = [$meId,$meId,$meId]; }
+    else {
+        // Scope by WHOSE card it is, not by who happens to have assigned it: keying off
+        // sc.assigned_by let a manager keep a card they should never have been able to create.
+        $frag = scorecard_scope('sc.employee_id', $args);
+        if ($frag !== '1') $sql .= " WHERE $frag";
+    }
     $sql .= " ORDER BY sc.period DESC, e.full_name";
     $st = $db->prepare($sql); $st->execute($args);
     $cards = array_map(fn($c) => card_detail($db, $c), $st->fetchAll(PDO::FETCH_ASSOC));
@@ -309,6 +361,7 @@ if ($method === 'POST') {
         $st = $db->prepare("SELECT sc.*, e.full_name employee_name FROM scorecards sc JOIN employees e ON e.id=sc.employee_id WHERE sc.id=?");
         $st->execute([$id]); $card = $st->fetch(PDO::FETCH_ASSOC);
         if (!$card) fail('Scorecard not found', 404);
+        assert_scorecard_target((int)$card['employee_id']);
         if (!in_array($card['status'], ['published','acknowledged','locked'], true)) {
             fail('Publish the scorecard before booking its payout', 400);
         }
@@ -325,6 +378,8 @@ if ($method === 'POST') {
         $card = $db->prepare("SELECT * FROM scorecards WHERE id=?");
         $card->execute([$id]); $card = $card->fetch(PDO::FETCH_ASSOC);
         if (!$card) fail('Not found', 404);
+        assert_scorecard_target((int)$card['employee_id']);
+        if ($card['status'] === 'locked') fail('This scorecard is locked — its actuals can no longer be re-synced', 409);
         $act = compute_actuals($db, (int)$card['employee_id'], $card['period']);
         // map auto_source -> actual for each line that is auto-sourced
         $defs = $db->query("SELECT code, auto_source FROM kpi_definitions")->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -344,6 +399,12 @@ if ($method === 'POST') {
     $period = trim($b['period'] ?? '');
     $level  = trim($b['role_level'] ?? 'Senior Sales Executive');
     if (!$empId || !preg_match('/^\d{4}-Q[1-4]$/', $period)) fail('employee_id and period (YYYY-Qn) required');
+    // The picker is already scoped, but the id arrives from the client — re-check it server-side,
+    // otherwise any manager can POST an arbitrary employee_id and own another team's scorecard.
+    assert_scorecard_target($empId);
+    $hasLogin = $db->prepare("SELECT 1 FROM employees e JOIN sales_users su ON su.employee_id=e.id AND su.is_active=1 WHERE e.id=?");
+    $hasLogin->execute([$empId]);
+    if (!$hasLogin->fetchColumn()) fail('That employee has no active sales login to score', 400);
 
     $presets = level_presets();
     $gmvTarget = $presets[$level] ?? 0;
@@ -395,8 +456,32 @@ if ($method === 'PATCH') {
         ok(['id' => $id, 'status' => 'acknowledged']);
     }
 
+    assert_scorecard_target((int)$card['employee_id']);          // manager: own team only
+
+    // A locked card is the signed-off record of a closed cycle: no KPI, weight, target,
+    // threshold, actual or note may move. Only a framework governor (Admin/HR/Sales Head/CFO)
+    // may reopen it by taking the status back off 'locked' — a Manager cannot unlock their own.
+    if ($card['status'] === 'locked') {
+        $unlockOnly = empty($b['kpi_code'])
+                   && isset($b['status']) && $b['status'] !== 'locked'
+                   && !array_key_exists('notes', $b) && !array_key_exists('role_level', $b);
+        if (!$unlockOnly) {
+            fail('This scorecard is locked — unlock it before changing KPIs, weights, targets or notes', 409);
+        }
+        if (!can_govern_kpi()) fail('Only Admin, HR, the Sales Head or the CFO may unlock a scorecard', 403);
+    }
+
     // manager/admin: update a line
     if (!empty($b['kpi_code'])) {
+        // Weights are percentage points of a 100% card; targets/thresholds are magnitudes.
+        // Neither may be negative, and no single KPI may exceed the whole card.
+        if (array_key_exists('weight', $b)) {
+            $w = (float)$b['weight'];
+            if ($w < 0 || $w > 100) fail('Weight must be between 0 and 100', 400);
+        }
+        foreach (['target_value','threshold_value'] as $f) {
+            if (array_key_exists($f, $b) && (float)$b[$f] < 0) fail(str_replace('_', ' ', $f) . ' cannot be negative', 400);
+        }
         $fields = []; $args = [];
         foreach (['weight','target_value','threshold_value','actual_value'] as $f) {
             if (array_key_exists($f, $b)) { $fields[] = "$f=?"; $args[] = (float)$b[$f]; }
@@ -414,7 +499,20 @@ if ($method === 'PATCH') {
 
     // manager/admin: update card status / notes
     $fields = []; $args = [];
-    if (isset($b['status']) && in_array($b['status'], ['draft','published','acknowledged','locked'], true)) { $fields[]="status=?"; $args[]=$b['status']; }
+    if (isset($b['status']) && in_array($b['status'], ['draft','published','acknowledged','locked'], true)) {
+        // Publishing is the commitment point, so that is where the 100% rule is enforced —
+        // enforcing it on every keystroke would make it impossible to move weight between two
+        // KPIs (the card is briefly off 100 between the two edits).
+        if ($b['status'] === 'published') {
+            $sw = $db->prepare("SELECT COALESCE(SUM(weight),0) FROM scorecard_lines WHERE scorecard_id=?");
+            $sw->execute([$id]);
+            $sum = round((float)$sw->fetchColumn(), 2);
+            if (abs($sum - 100) > 0.01) {
+                fail('KPI weights total ' . rtrim(rtrim(number_format($sum, 2), '0'), '.') . '% — they must add up to 100% before publishing', 400);
+            }
+        }
+        $fields[]="status=?"; $args[]=$b['status'];
+    }
     if (array_key_exists('notes', $b)) { $fields[]="notes=?"; $args[]=$b['notes']; }
     if (array_key_exists('role_level', $b)) { $fields[]="role_level=?"; $args[]=$b['role_level']; }
     if (!$fields) fail('Nothing to update');
@@ -427,6 +525,15 @@ if ($method === 'PATCH') {
 if ($method === 'DELETE') {
     if (!$canManage) fail('Managers only', 403);
     $id = (int)($_GET['id'] ?? 0);
+    $st = $db->prepare("SELECT * FROM scorecards WHERE id=?"); $st->execute([$id]);
+    $card = $st->fetch(PDO::FETCH_ASSOC);
+    if (!$card) fail('Not found', 404);
+    assert_scorecard_target((int)$card['employee_id']);
+    // Only an unpublished draft may be removed. Once a card is published the employee has seen
+    // their goals (and may have acknowledged them), so it is a record to be superseded, not deleted.
+    if ($card['status'] !== 'draft') {
+        fail('Only a draft scorecard can be deleted — this one is ' . $card['status'], 409);
+    }
     $db->prepare("DELETE FROM scorecard_lines WHERE scorecard_id=?")->execute([$id]);
     $db->prepare("DELETE FROM scorecards WHERE id=?")->execute([$id]);
     ok(['deleted' => $id]);

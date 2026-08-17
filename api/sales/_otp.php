@@ -10,33 +10,87 @@
  * Used by: chatbot-otp.php (public chatbot widget), forgot-password.php (CRM password reset).
  */
 
+require_once __DIR__ . '/../../config/env.php';
+
 /**
- * Base URL of PayG's verification service.
+ * Base URL of PayG's verification service. PRODUCTION host is the default now;
+ * override with PAYG_OTP_BASE in the environment (e.g. to point back at
+ * devapi.payg.in for a staging box). Trailing slash is normalised.
  *
- * NOTE: this is the *dev* host — it is what the chatbot widget has always used. Point it at
- * the production host before go-live (define PAYG_OTP_BASE in config/app.php to override).
+ * Endpoints appended to this base — all POST, JSON body:
+ *   Send_MobileOTP    {"MobileNumber":"9182032920","Type":15}
+ *   Verify_MobileOTP  {"MobileNumber":"9182032920","Type":15,"ConfirmOtp":"144654","Id":898}
+ *   Send_EmailOTP     {"Email":"user@payg.in","Type":15}
+ *   Verify_EmailOTP   {"Email":"user@payg.in","Type":15,"ConfirmOtp":"145624","Id":"899"}
  */
 if (!defined('PAYG_OTP_BASE')) {
-    define('PAYG_OTP_BASE', 'https://apiv3.PayG.in/virtualPOS/api/WebSite/');
+    $__otpBase = env('PAYG_OTP_BASE', 'https://apiv3.PayG.in/virtualPOS/api/WebSite/');
+    define('PAYG_OTP_BASE', rtrim($__otpBase, '/') . '/');
+    unset($__otpBase);
+}
+
+/**
+ * Offline dev fallback (OTP 123456). OFF unless OTP_DEV_FALLBACK=true.
+ *
+ * SECURITY: when this is on and the verification service is unreachable,
+ * otp_call_payg() answers "verified" to ANY 6-digit code. That is an account
+ * takeover on forgot-password.php and lets anyone claim any mobile number in
+ * the chatbot. It used to be unconditional, which meant a network blip or a
+ * firewalled egress route silently turned authentication off in production.
+ * Never enable it on a public host.
+ */
+if (!defined('OTP_DEV_FALLBACK')) {
+    define('OTP_DEV_FALLBACK', env_bool('OTP_DEV_FALLBACK', false));
 }
 
 /** POST a payload to a PayG verification endpoint. Returns [rawBody, curlError, httpStatus]. */
 function otp_call_payg(string $endpoint, array $payload, int $timeout = 20): array
 {
+    // TLS verification is ON. This request carries the OTP and the verification
+    // id for a real production auth flow — with verification disabled, anything
+    // on the network path could present its own certificate and read or forge
+    // both. Set OTP_TLS_INSECURE=true only to work around a genuine local CA
+    // problem, and never on a public host.
+    $verify = !env_bool('OTP_TLS_INSECURE', false);
+
     $ch = curl_init(PAYG_OTP_BASE . $endpoint);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST => true,
-        CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_SSL_VERIFYPEER => $verify,
+        CURLOPT_SSL_VERIFYHOST => $verify ? 2 : 0,
         CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
         CURLOPT_POSTFIELDS => json_encode($payload),
         CURLOPT_TIMEOUT => $timeout,
+        CURLOPT_CONNECTTIMEOUT => 10,
     ]);
     $body = curl_exec($ch);
     $err = curl_error($ch);
     $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
+
+    // If the external service is unreachable, LOCAL DEV ONLY may fall back to code
+    // 123456 so password reset still works offline. Gated behind OTP_DEV_FALLBACK
+    // because "accept any 6-digit code" is an authentication bypass on a public host.
+    // With the flag off we fail closed: the caller sees the real error and rejects.
+    if (($err !== '' || $httpCode !== 200) && OTP_DEV_FALLBACK) {
+        if (str_contains($endpoint, 'Send_')) {
+            return [json_encode(['Id' => 123456, 'Status' => 1, 'Message' => 'OTP sent (Dev Mode: 123456)']), '', 200];
+        }
+        if (str_contains($endpoint, 'Verify_')) {
+            $otp = trim((string)($payload['ConfirmOtp'] ?? ''));
+            if ($otp === '123456' || $otp === '000000' || strlen($otp) === 6) {
+                return [json_encode(['Status' => true, 'Message' => 'OTP verified']), '', 200];
+            }
+            return [json_encode(['Status' => false, 'Message' => 'Invalid OTP']), '', 200];
+        }
+    }
+
+    if ($err !== '' || $httpCode !== 200) {
+        error_log(sprintf('OTP service failure: %s%s http=%d err=%s',
+            PAYG_OTP_BASE, $endpoint, $httpCode, $err !== '' ? $err : '-'));
+    }
+
     return [$body, $err, $httpCode];
 }
 

@@ -1,0 +1,938 @@
+﻿<style>
+    table, th, td {
+        border: 1px solid black;
+        border-collapse: collapse;
+    }
+</style>
+
+<section class="mt-4">
+    <div class="container">
+        <div class="row" id="printbtn">
+            <!-- <div class="col-md-12">
+              <div>
+                <div class=" card px-5 py-4 poppins border" style="box-shadow: none; border-radius: 10px;">
+                  <div class="row mx-0">
+                    <div class="col-md-3">
+                      <div class="">
+                        <div class=" " *ngIf="MerchantLogo">
+                          <img   src="data:image/jpeg;base64,{{content}}" fxFlexAlign="center"id="merchatImage" class="profile fade-in-on-icon-sidenav img-thumbnail img-rounded">
+                      </div>
+                      <div class=" "   *ngIf="PaygLogo">
+                          <img   src="assets/img/user/10.jpg"   class="profile fade-in-on-icon-sidenav img-thumbnail img-rounded">
+                      </div>
+                      <a class="d-block" [routerLink]="'/settings/merchantsettings'"> Change Logo</a>
+
+                      </div>
+                    </div>
+                    <div class="col-md-9 p-0">
+
+                      <h3 class="m-0 poppins font-weight-bold"> {{businessName}} </h3>
+                      <div class="row pt-2">
+                        <div class="col-md-6">
+                          <p> <span class="text-muted">BusinessName: {{businessName}} </span></p>
+                          <p> <span class="text-muted">MerchantKeyId: {{merchantKeyId}} </span></p>
+                          <p><span class="text-muted">UserName: {{username}}</span> </p>
+                        </div>
+                        <div class="col-md-6">
+
+
+                          <p>
+                            <img src="assets/img/email-icon.png" alt=""> &nbsp;<span class="text-muted">Email:
+                              care@payg.in</span>
+                          </p>
+                          <p>
+                            <img src="assets/img/phone-icon.png" alt=""> &nbsp;<span class="text-muted">Phone:
+                              +917337327109</span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div> -->
+        </div>
+
+        <div class="row mx-auto pt-3" style=" width: 980px; ">
+            <div class="col-md-12">
+                <div>
+                    <div class="py-4">
+                        <form>
+                            <div class="row">
+                                <div class="col text-right mt-3">
+                                    <!-- <button class="damke_siteBtn" id="btnDownload" (click)="DownLoadPage()" matTooltip="Print"><i class="fas fa-print"></i></button> -->
+                                    <!-- <button class="damke_siteBtn" id="btnDownload" (click)="generatePdf('open')" matTooltip="open"><i class="fas fa-print"></i></button> -->
+                                    <!-- <button class="damke_siteBtn" id="btnDownload" (click)="generatePdf('download')" matTooltip="dpwnload"><i class="fas fa-download"></i></button>  -->
+                                    <!--<button class="box-button" id="printbtn" (click)="printPage()" matTooltip="open">Print <i class="fas fa-print"></i></button>-->
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="text-right">
+                                        <img src="assets/img/logo.png" alt="">
+                                    </div>
+                                </div>
+                                <div class="col-md-12 text-justify merchat-agrem-f" id="pdfTable" #pdfTable style="font-family: 'calibri'; font-size: 15px;">
+                                    <div class="tbp40" style="padding-top: 40%; padding-bottom: 45%;">
+                                        <h3 class="text-center font-weight-bold merch-h3 ">
+                                            PAYMENT AND COLLECTION
+                                        </h3>
+                                        <h3 class="text-center font-weight-bold merch-h3">
+                                            MANAGEMENT SERVICES
+                                        </h3>
+                                        <h3 class="text-center font-weight-bold merch-h3">
+                                            AGREEMENT
+                                        </h3>
+
+                                        <h4 class="text-center font-weight-bold merch-h3">
+                                            BETWEEN
+                                        </h4>
+
+                                        <h4 class="text-center font-weight-bold merch-h3-o">
+                                            businessName
+                                        </h4>
+                                        <h4 class="text-center font-weight-bold merch-h3-o">
+                                            AND
+                                        </h4>
+                                        <h4 class="text-center font-weight-bold merch-h3-o">
+                                            PayG – A complete payment solution
+                                        </h4>
+                                        <h5 class="text-center font-weight-bold merch-h3-o">
+                                            (A product of Xsilica Software Solutions Pvt. Ltd.)
+                                        </h5>
+                                    </div>
+
+                                    <p class="pt-5">
+                                        THIS PAYMENT AND COLLECTION MANAGEMENT SERVICES AGREEMENT is made on <u>merchantCreateddate </u> by and between
+
+                                        Xsilica Software Solutions Pvt. Ltd, a company incorporated under the provisions of the Indian Companies Act, 1956, having its registered office at located at H.No:8-2-120/112/B/5&6, 3rd Floor, BBR Forum, Road No: 2, Banjara Hills, Hyderabad- 500034, Telangana, India (‘ hereinafter referred to as the Xsilica/PayG Payment Gateway/PayG’).
+                                    </p>
+                                    <h6 class="text-center font-weight-bold mb-0 py-2"> AND</h6>
+                                    <p> <u>businessName</u>, IndustryTypecontent</p>
+
+
+                                    <p>PayG and the Entity are hereinafter collectively referred to as “the Parties” and severally as “the Party.</p>
+
+                                    <p>WHEREAS, Xsilica is a company which has developed and now own a product/application/software called PayG and through which Xsilica  is engaged in the business of providing services related to electronic payments and collections, and offers a payments solution that unifies multiple electronic collection methods and modes onto a single standards based platform.</p>
+
+                                    <p>
+                                        AND WHEREAS, the Entity is an Incorporated Entity/Sole Proprietorship/Partnership Firm/ Limited Liability Partnership and is in the business, inter alia, of <u>businessName</u>  and operates/owns/maintains the Mobile App
+                                        <!--<span *ngIf="isOwnerContactNumberhave"><u>__NA__</u></span>-->  <!--mobile app url bind here    -->
+                                        <!--<span *ngIf="!isOwnerContactNumberhave"><u>___NA__</u></span>-->
+                                        and the website
+
+                                        <!--<span *ngIf="isWebsitehave"><u><a href="BusinessWebSiteEdit">BusinessWebSiteEdit</a> </u></span>
+                                        <span *ngIf="!isWebsitehave"><u>___NA___</u></span>-->
+                                        <!--isWebsitehave-->
+                                        <a href="isWebsitehave">isWebsitehave</a>
+                                        where its services are detailed.
+                                    </p>
+
+                                    <p>AND WHEREAS, the Entity now wishes to offer online payment facilities that will enable its customers to make payments to the Entity, towards payment of invoices, by debit to a designated bank or card account.</p>
+
+
+                                    <p>AND WHEREAS, Xsilica has entered into business arrangements with various banks and other entities (hereinafter referred to as ‘Participating Bank(s)’) for providing payment related services, including for processing transactions with/through them. These Participating Banks allow Xsilica the facility of processing transactions with/through them, by routing transactions to their networks directly and/or third party clearing houses and/or other banks and/or through designated payments management switches; thus enabling debit or credit to customer/account holder accounts ( Hereinafter referred to as “Transaction Processing Facilities”)</p>
+
+
+                                    <p>
+                                        (For the sake of brevity Xsilica hereinafter referred to as PayG. Participating Banks and PayG (jointly and severally) shall hereinafter be referred to as the ‘Payment Service Provider’ both jointly and severally, as the context may require;)
+                                    </p>
+
+                                    <p>
+                                        AND WHEREAS, the Entity has approached and represented to PayG that it is fully satisfied with the requisite expertise, knowledge, experience, trained personnel, infrastructure of the PayG which is required to provide the services i.e. a single tie-up with PayG, integrate to a unified platform and which offers a comprehensive service to Entity’s customers for making online payments to the Entity for the purposes specified above.
+                                    </p>
+
+                                    <p>
+                                        AND WHEREAS, the Entity also acknowledges and agrees that a comprehensive service offering in this regard, would ordinarily involve contractual tie-ups and technical integrations with multiple banks on an individual basis. The Entity acknowledges that the multiplicity of such tie-ups and technical interfaces would lead to significantly higher costs and the potential of inefficiencies in deliverables, (including that discrete electronic systems need different file formats, and a more intensive reconciliation effort and co-ordination / follow-up necessitated on account of multiple service providers);
+                                    </p>
+
+                                    <p>
+                                        AND WHEREAS, the Parties now want to specify the terms and conditions and wishes to enter into this Agreement to set out the general terms and conditions under which PayG will provide electronic payments processing and settlement services to the Entity.
+                                    </p>
+                                    <!-- //2nd page -->
+                                    <p>NOW, THEREFORE, IN CONSIDERATION OF THE REPRESENTATIONS, WARRANTIES, PROMISES AND COVENANTS CONTAINED HEREIN, AND OTHER GOOD AND VALUABLE CONSIDERATION, THE RECEIPT, SUFFICIENCY AND ADEQUACY OF WHICH ARE HEREBY ACKNOWLEDGED, THE PARTIES, INTENDING TO BE LEGALLY BOUND, AGREE TO THE FOREGOING AND AS FOLLOWS:</p>
+                                    <h5 class="text-left font-weight-bold"><u>Interpretations. </u></h5>
+
+
+                                    <p>
+                                        i. A reference to a clause or to a Exhibit is to a clause in, or Exhibit to, this Agreement;
+                                        ii. Words in the singular shall include the plural and vice versa. Further, the use of words in the singular or plural, or with a particular gender, shall not limit the scope or exclude the application of any provision of this Agreement to any person or persons or circumstances except as the context otherwise permits;
+                                        iii. Words denoting persons shall include individual, corporation, partnership, trust, limited liability company, association or other entity
+                                        iv. Any reference to ‘days’ or ‘working days’ means ‘business days’, i.e. any day other than:
+                                        (i) Saturday and Sunday, (ii) a day on which the banks in Mumbai and/or RBI are closed for business/clearing, or (iii) a day on which normal business could not be transacted due to storms, floods, bandhs, strikes etc.
+                                        v. The Exhibits annexed to this Agreement, form an integral part of this Agreement and will be in full force and effect as though they were expressly set out in the body of this Agreement.
+                                        vi. Reference to any legislation or law or to any provision thereof shall include references to any such law as it may, after the date hereof, from time to time, be amended, supplemented or re-enacted, and any reference to a statutory provision shall include any subordinate legislation made from time to time under that provision.
+                                        vii. Any agreement, instrument or statute defined or referred to herein or any agreement or instrument that is referred to herein means such agreement, instrument or statute as from time to time amended, modified or supplemented, including (in the case of agreements or instruments) by waiver or consent and (in the case of statutes) by succession of comparable successor statutes and references to all attachments thereto and instruments incorporated therein.
+                                        viii. References to the terms “include” and “including” are meant to be inclusive and will be deemed to mean “include without limitation” or “including without limitation
+                                        ix. The word “or” is disjunctive, but not necessarily exclusive
+                                        x. The term “knowledge” will mean the actual (and not imputed) knowledge of the relevant party.
+                                        xi. Any term defined in a particular tense will include tenses of that term
+                                        xii. Any reference to a Party’s right to make a decision or determination will be at such Party’s sole discretion, unless expressly stated otherwise herein. The rule of construction against the draftsman shall not be applied in interpreting and construing this Agreement.
+                                        xiii. This Agreement is drafted in English. If it is translated into other languages, the English version alone shall govern. If a Exhibit or Amendment is drafted in a language other than English, an English version shall always be created.
+                                    </p>
+
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <h5 class="text-left font-weight-bold pb-4"><u>1. DEFINITIONS</u></h5>
+                                            <p>
+                                                As used herein (including in the introductory paragraph and recitals) and unless otherwise defined in this Agreement, capitalized terms will have the following meaning
+                                            </p>
+                                            <p>i. “Account” means a Card or a Bank Account, both jointly and severally, as the context may require;</p>
+                                            <p>ii. “Affiliate” means a person that controls, is controlled by or is under common control with, another person. For the purposes of this definition, “control” when used with respect to any specified person means the power to direct the management and policies of such person, directly or indirectly, whether through the ownership of voting securities, by contract or otherwise; and the terms “controlling” and “controlled” have correlative meanings to the foregoing.</p>
+                                            <p>iii. “Agreement” means this Payments Services Agreement (including its Exhibits), as it may be amended from time to time by agreement between the parties and in writing;</p>
+                                            <p>iv. “Applicable Law” means any law, statute, rule, regulation, order, circular, decree, directive, judgment, decision or other similar mandate of any applicable central, national, state or local governmental authority having competent jurisdiction over, or application to the Party or subject matter in question.</p>
+                                            <p>v. “Application Tool” means any software product developed by PayG whether by itself or along with other technology vendors</p>
+                                            <p>vi. “Approval Notice” means (i) an electronic message or statement transmitted by PayG to the Entity that a Payment Request has been approved by the applicable Issuer or Participating Bank or (ii) an electronic confirmation available on the PayG Systems that a Payment Request has been approved through the Transaction Processing Facilities.</p>
+
+                                            <p>vii. “Association” or “Card Association” means Visa, MasterCard, American Express or other association of which the issuer of a Card is a member and includes reference to banks or other entities that issue Cards;</p>
+                                            <p>viii. “Association Rules and Regulations” mean the means the rules, regulations, manuals, bulletins, notices and other written documents issued by any Association (and as revised by them from time to time) with respect to which PayG is providing Services under this Agreement;</p>
+                                            <p>ix. “Authorize” or “Authorization” means the approval received through the Transaction Processing Facilities of a Payment Request in the amount specified in the Approval Notice.</p>
+                                            <p>x. “Authentication” means the process by which the Card or Bank Account identification is authenticated by the Participating Bank(s) /Issuer(s).</p>
+                                            <p>xi. “Bank Account” means a banking account maintained by a Customer with a bank.</p>
+                                            <p>xii. “Business Day” means a day (other than Saturday or Sunday) on which banks in Mumbai are generally open for business.</p>
+                                            <p>xiii. “Card” means any valid credit card or debit card, issued by any Issuer, which may be used by a Cardholder to carry out a Transaction</p>
+                                            <p>xiv. “Cardholder Information” means: (a) any Card Association branded account number; (b) any transaction information concerning a Card Association branded account; or (c) any Card Association or third-party </p>
+                                            <p> making consolidated settlement to the Entity of the collections across various individual Participating Bank(s).</p>
+                                            <p>xxvi. “PCI DSS” or “CISP” means Visa’s (or a Visa Affiliate’s) Cardholder Information Security Program (CISP) or alternatively referred to as the Payment Card Industry Data Security Standard (PCI DSS), as such program may be amended by Visa (or such Visa Affiliate) from time to time.</p>
+                                            <p>xxvii. “Parent Corporation” means a company or entity owning over 50% of a Party.</p>
+                                            <p>xxviii. “Participating Banks” has the meaning assigned in the set forth in the introductory paragraph and recitals of this Agreement.</p>
+                                            <p>xxix. “Party” and “Parties” have the meanings set forth in the introductory paragraph of this Agreement. </p>
+                                            <p>xxx. “Payment Request” means a submission of data electronically transmitted by the Entity to PayG to initiate a Debit Transaction, which constitutes a request by the Entity to PayG to seek the Issuer or Participating Banks to Authorize, process and settle such Customer’s Debit Transaction.</p>
+                                            <p>xxxi. “Payment Service Provider” shall have the meanings set forth in the introductory paragraph of this Agreement.</p>
+                                            <p>xxxii. “Product” means any good or service sold or provided by the Entity or through the Entity Website including goods, services, rights and software, whether in tangible, digital or intangible form.</p>
+                                            <p>xxxiii. “Reserve Bank of India” or “RBI” means the central bank of India.</p>
+                                            <p>xxxiv. “Reserve Deposit” means the fund created to protect against loss due to fraud, theft, human error, or excessive customer disputes, arising on account of the transactions conducted/ processed under this Agreement.</p>
+                                            <p>xxxv. Retrieval Request” means a request initiated by a Cardholder or Issuer or Debit Account Holder that requires Entity to produce within a specified period of time a copy of the transaction receipt and/or any relevant documentation in substantiation of the Transaction. </p>
+                                            <p>xxxvi. “Settle” or “Settlement” means the procedure pursuant to which Nodal Bank remits funds to the Entity under this Agreement;</p>
+                                            <p>xxxvii. “Settlement Account” has the meaning assigned in Clause 5.5 “Settlement Information” has the meaning assigned in Clause 5.6.</p>
+                                            <p>xxxviii. “Settlement Services” means the remittance of amounts payable to the Entity, as per stipulated timelines outlined in Clause 5 of this Agreement.</p>
+                                            <p>xxxix. “Services” means the activities undertaken by PayG to (a) provide technical integrations with the PayG Systems enabling Payment Requests to be routed to Participating Banks or processed through the Transaction Processing Facilities (b) seek Authorize, process and settle Payment Requests for Debit Transactions with Participating Banks or through the Transaction Processing Facilities and (c) otherwise perform its obligations hereunder.</p>
+                                            <p>xl. “Transaction Amount” means the total amount of a Debit Transaction contained in the Payment Request transmitted from the Entity and as received by PayG.</p>
+                                            <p id="pb-3">xli. “Transaction Processing Facilities” has the meaning assigned in meanings set forth in the introductory paragraph and recitals of this Agreement.</p>
+                                            <p> any competent authority having jurisdiction under Applicable Law. Entity, thus, expressly agrees and consents to such reporting.</p>
+                                            <p> 3.6 Termination of this Agreement shall not affect any accrued rights or liabilities of either Party nor shall it affect the coming into force or the continuance in force of any provision of this Agreement which is expressly or by implication intended to come into or continue in force on or after such termination including, without limitation, warranties, limitations & disclaimers, Clause 7 (Consideration), Clause 9 (Intellectual Property, Trademarks and Publicity), Clause 11 (Data & System Security and Compliances), Clause 13 (Representations and Warranties), Clause 18 (Limitation of Liability), Clause 14 (Indemnity) and Clause 21 (Miscellaneous) of this Agreement.</p>
+                                            <h5 class="text-left font-weight-bold">
+                                                <u>
+                                                    4. PROCESS OF TRANSACTION
+                                                </u>
+                                            </h5>
+                                            <p> 4.1. When a Customer makes a payment to the Entity towards Products/services purchased/availed by such Customers from the Entity directly or through the Entity Website, it may submit Debit Transactions to PayG for Authorization, processing and Settlement in connection with such payments</p>
+                                            <p class="text-left font-weight-bold"><u> 4.2. Authorizations.</u>  </p>
+                                            <p>
+                                                4.2.1 The Entity may submit a Payment Request in respect of a accepted Debit Transaction to PayG when a Customer elects to make a payment to the Entity, including for any purchase/transactions on the Entity Website, via a Debit Transaction.
+                                            </p>
+                                            <p>
+                                                4.2.2 For each Payment Request submitted to PayG by the Entity, PayG will, in accordance with the specifications of the relevant Services as set out in <b>Exhibit 1</b> provide to the Entity an Approval Notice or a Decline Notice
+                                                4.2.3 Each Approval Notice will constitute PayG’s obligation to (i) ensure the amount of the Debit Transaction in such Approval Notice is reserved in the Nodal Bank Account and (ii) cause the Nodal Bank to remit to the Entity, funds in accordance with this Agreement
+
+                                                4.2.4 <b>Declines.</b> PayG may decline Authorize of a Debit Transaction where such Debit Transaction has been declined by the applicable Participating Bank or has otherwise been identified by PayG to be a potentially fraudulent or erroneous transaction
+                                            </p>
+                                            <h5 class="text-left font-weight-bold"><u>5. SETTLEMENT OF TRANSACTION AND ITS RECONCILIATION</u></h5>
+                                            <p> 5.1 <u>Aggregation of Payments.</u> The total Transaction Amount(s), in respect of the Authorized Debit Transactions shall be aggregated into designated bank accounts held at Participating Bank(s)/ Nodal Bank(s) and shall be settled to the Entity (i) as set forth in this Clause 5 and (ii) in the manner and as per the procedure prescribed, from time to time, by the Reserve Bank of India, or any other institution regulating the payments business which may have an effect on this Agreement or any Transactions conducted under this Agreement</p>
+                                            <p> 5.2 <u>Settlement of Debit Transactions.</u> Remittance of monies in respect of the Authorized Debit Transactions by the Participating Banks to the Nodal Bank will occur, in the normal course of business, by the end of the first Business Day or such other Business Day as the RBI may prescribe from time-to-time following the day that PayG generates, transmits or otherwise provides an Authorization. Nodal Bank thereafter will remit monies to the Entity.</p>
+                                            <p> 5.3 The amount of Settlement funds remitted to the Entity on each Business Day shall be equal the aggregate Transaction Amounts of all unsettled Debit Transactions Authorized within the two Business Day period prior to the Business Day on which Settlement occurs less (a) any Chargeback (b) the aggregate Fee applicable to all Debit Transactions Authorized since the immediately preceding Business Day; and (c) the </p>
+                                            <p>Entity arising in terms of this Agreement. The Entity agrees that from time to time PayG may impose on it additional Reserve Deposit amounts, in order to reduce PayG’s reasonable apprehension of risk of loss under varying circumstances arising out of the transactions conducted through the PayG Processing Mechanism.</p>
+                                            <p>
+                                                6.3 In the event of termination of the Agreement, taking into consideration the track record in terms of incidences of Chargeback during the tenure of the Agreement and/or the circumstances of termination of the Agreement:
+
+                                                (i) Both Parties shall mutually agree upon the amount that PayG shall be entitled to withhold from out of the amounts payable to the Entity in terms of Clause 5 of this Agreement to facilitate the settlement and resolution of any Chargeback related issues arising out of any transactions done under this Agreement.
+
+                                                (ii) These amounts shall be withheld for such period as may be then prevailing in respect of the time-period allowed to Customers for initiating a Chargeback under the Card Association guidelines or the Reserve Bank of India for resolution of such disputes.
+                                            </p>
+
+                                            <h5 class="text-left font-weight-bold"><u>7 CONSIDERATION </u></h5>
+                                            <p> 7.1 In consideration of the Services provided herein under this Agreement, the Entity shall pay a fee as referred in <b>Exhibit 3</b> of this Agreement upon the terms and conditions as further detailed in the Exhibit, and as may be amended from time to time. It is agreed between the Parties that PayG shall have unfettered right to revise the Fees from time to time, which amended Fees, shall be effective upon the mutual agreement of the Parties. For audit and other operational purposes, the Parties agree to exchange letters stipulating such fees and charges as per formats provided in <b>Exhibit 4</b>.</p>
+                                            <p> 7.2 The Fees for Services set forth in the Agreement may be adjusted to reflect increases or decreases by Associations in interchange, assessment and other Association fees. All such adjustments shall be Entity’s responsibility to pay and shall become effective upon the date any such change is implemented by the applicable Association or other party</p>
+                                            <p> 7.3 It is specifically agreed between the Parties that the Fees for Services set forth in the Exhibits, are based upon assumptions and agreed upon operating processes. If the Entity significantly alters its method of doing business, PayG, at its sole option, may revise the Fees. If Parties cannot agree in good faith to a mutually acceptable fee within thirty (30) days, PayG may terminate this Agreement in accordance with this terms and conditions herein contained.</p>
+                                            <p> 7.4 When authorized by applicable statute(s) or Card Association rules, Entity agrees to pay PayG any fines imposed on it by any Association resulting from Chargeback and any other fees or fines imposed by an Association with respect to acts or omissions of the Entity. If Entity’s Chargeback percentage for any line of business exceeds the threshold Entity may be assessed Chargeback fees and any applicable Chargeback handling fees or fines. The threshold is subject to change from time to time in order to reflect changes in the chargeback percentage threshold reported by Card Associations</p>
+                                            <h5 class="text-left font-weight-bold">
+                                                <u>
+                                                    8 ETHICAL STANDARDS
+                                                </u>
+                                            </h5>
+                                            <p> 8.1 Entity agrees that, with respect to its role as a service recipient from PayG, including any interaction with any employee, contractor, vendor (jointly referred as ‘employee’) of PayG, it shall not: (a) give or offer to give any gift or benefit to said employee, (b) solicit or accept any information, data, services, equipment, or commitment from said employee unless same is (i) required under a contract between PayG and Entity, or (ii) made pursuant to a written disclosure agreement between PayG and Entity, or (iii) specifically authorized in writing by PayG’s management, (c) solicit or accept favoritism from said employee, and (d) enter into any outside business relationship with said employee without full disclosure to, and</p>
+                                            <p>
+                                                9.7 Each Party shall have the right, during the term of this Agreement, to include the other Party's trademarks or logos in its advertising or
+                                                promotional literature, free of charge, provided that the Party owning a trademark shall have an opportunity to review and approve any use of its trademarks prior to their distribution or release.
+                                            </p>
+                                            <p> 9.8 The Entity may, at its sole discretion, market, promote, advertise, and inform the Customers and general public of the Payment Services provided herein in cooperation with PayG. Any such activity shall prominently display a statement/logo/image provided by PayG. The Entity further undertakes that any promotion or publicity of the Services would always carry the PayG or its parent/subsidiary company’s service mark and an appropriate notation, as may be agreed between the Parties, to indicate that the Service is being powered by PayG. However, the Entity shall be solely responsible for the accuracy of all information and/or validity of the prices and any other charges and/or other information relating to the goods and services, which are offered through or included in such literature or upon its website</p>
+                                            <h5 class="text-left font-weight-bold"><u>10 INTERNAL CONTROLS REQUIREMENTS  </u></h5>
+                                            <p> Accounting and Internal Controls. In its performance of the Services under this Agreement, the Entity represents and warrants that it has adequate accounting and internal operating controls (“Controls”) to comply with PayG’s requirements and any Central, State and local laws, ordinances and regulations applicable to this Agreement. Upon PayG’s request, the Entity shall provide written documentation of its Controls processes that demonstrate its compliance with the obligations set forth above.</p>
+                                            <h5 class="text-left font-weight-bold"><u>11 DATA, SYSTEM SECURITY AND COMPLIANCES </u></h5>
+                                            <p> 11.1 <u>Disclosure.</u> Entity shall not, without the prior written consent of PayG, disclose the identity of any account holder or any information whatsoever relating to any transactions to any other person or otherwise use any information acquired by it in respect of the payment- transactions and in relation thereto other than for the purposes of this Agreement. Provided however that any information required to be disclosed by any order of a court or regulatory authority of competent jurisdiction may be disclosed to such court or regulatory authority to the extent specified in the order.</p>
+                                            <p>11.2   <u>Security. </u> Entity herein ensure that there are proper encryption and security measures at their respective Websites to prevent any hacking into information pertaining to transactions contemplated under this Agreement</p>
+                                            <p> 11.3 <u>Electronic Communication.</u> In processing the transactions, PayG shall be entitled to rely upon all electronic communications, orders or messages sent to PayG and I PayG shall not be obliged to verify or make further inquiry into the identity of the sender, or the message integrity, of any communications, orders or messages. The Entity shall in no circumstance dispute such reliance by PayG. Provided that if PayG were to employ any security measures, PayG shall not be bound by or obliged to act on any electronic communications, orders or messages received on-line from the Entity or the Customer which do not properly utilize PayG’s security measures as may be applicable from time to time</p>
+                                            <p> 11.4 <u>Security Requirements</u>. In availing the Services and the Settlement Services, Entity herein  declares, assure and undertake to abide by the relevant security standards/ regulations/ requirements/guidelines which would be applicable to the conduct of the transactions contemplated under this Agreement, including, without limitation, (a) regulatory provisions as may be applicable from time to time, (b) security measures and resultant hardware/ software upgrade consequent upon upgrade of PayG’s systems and procedures with a view to ensuring security of transactions, (c) maintenance, protection, confidentiality and such other requirements with respect to transaction data as may be imposed by any regulatory or </p>
+                                            <p>
+                                                13.3 <u>Covenants Related to Entity Products</u>
+
+                                                i. The Entity shall duly fulfill all Customer Orders in accordance with the instructions of the Customer in accordance with the terms and conditions agreed to by and between the Customer and the Entity. The fulfillment of all such transactions shall be subject to the terms and conditions agreed to between the Customer and the Entity. The Payment Service Provider shall not be a party to such contract and the fulfillment of the contract shall solely and exclusively be the obligation of the Entity. Any and all disputes regarding quality, merchantability, non-delivery and delay in delivery of the Products or in the amount of billing or otherwise will be dealt with by and between the Entity and the Customer directly and the Payment Service Provider shall not be a party to such disputes.
+                                                ii. The Entity shall prior to accepting any instructions from the Customer at the Entity Website ensure that appropriate agreements, if any required, have been executed with the Customer in accordance with the requirements of applicable law and regulations.
+                                                iii. The Entity shall carry out all verifications for the Customer as may be required on an independent basis.
+                                                iv. The Entity assures the due performance of all Customer Orders for which the payment has been transferred through the Processing Mechanism.
+                                                v.   The Entity shall ensure that the best service standards in the industry are adopted and shall ensure delivery of all Products purchased /availed by Customers in accordance with the highest standards. The Entity assures and guarantees that the following products and services will not be sold on its site and through the use of the Processing Mechanism: 1) Firearms 2) Alcoholic beverages 3) Explosives 4) Pornography materials and services of any kind whatsoever 5) Live animals 6) Banned / illegal drugs or other controlled substances 7) Fireworks or pyrotechnic devices or supplies 8) Hazardous materials, combustibles, corrosives 9) Web site access and / or web site memberships of pornography or illegal sites 10) Bulk E-mail software or mailing lists 11) Gambling transactions 12) Multi Level Marketing collection fees 13) Matrix sites or sites using a matrix scheme approach 14) Work-at-home information 15) Web site promotion or Search engine registration fees 16) Drop-shipped merchandise 17) Any product or service which is not in compliance with all applicable laws and regulations whether federal, state, local or international including the laws of India.
+                                                vi. The Entity shall ensure confidentiality of all Card and Bank Account information submitted by the Customers to the Entity. The Entity shall ensure that there are proper encryption and security measures at the Entity to prevent any hacking into the information of its Customers and other Bank Account / Card data.
+                                            </p>
+                                            <p>
+                                                vii. In the event of any dispute between the Entity and the Customer whether in relation to any deficient, improper or incomplete service provided by the Entity or otherwise, the Payment Service Provider shall not be made a party to any litigation, arbitration or other proceeding instituted in respect of such disputes. The Entity shall take all necessary steps and/or precautions to ensure that the services offered by it on the Entity Website or otherwise are not mistaken or misrepresented as being associated with, being offered by the Payment Service Provider.
+                                                viii. In relation to the Processing Mechanism, PayG shall be entitled to prohibit the display of any material on the Entity Website if the act or manner of such display is contrary to any applicable law, regulation, government policy, order or guideline or which is mis-representative of the services of the Payment Service Provider, in the sole and exclusive opinion of PayG. The Payment Service Provider shall be entitled to require the Entity to add to the Entity Website such disclaimers, warranties and indemnities as may be required from time to time, in respect of the Services. In this regard, the Entity shall render the necessary modifications at the Entity Website, so requested within seven days of such request being intimated to it.
+                                                ix. The Entity shall take all precautions as may be feasible or as may be directed by the Payment Service Provider to ensure that there is no breach of security and
+                                            </p>
+
+
+
+                                            <h5 class="text-left font-weight-bold"><u>14 INDEMNIFICATION  </u></h5>
+                                            <p> 14.1 <u>Indemnification.</u> The Entity shall defend, indemnify, and hold harmless PayG and its directors, officers, employees, and agents (each a “PayG Party”) if PayG is involved in any cause of action, suit, arbitration, alternative dispute resolution proceeding, administrative hearing or other proceeding, whether of a civil, criminal, administrative or investigative nature, and any appeal there from (a “Proceeding”) in connection with (a) any act or omission or misconduct of the Entity in the performance of this Agreement, or, (b) any claim or proceeding brought by the Customer or any other person against PayG in respect of any Products offered by the Entity, or, (c) any disputes / claims made against PayG by any of the Customer(s) as to the amounts collected from them, on the basis of such amount being incorrect, excessive or otherwise not due from such Customer attributable to the fault of the Entity, or, (d) Entity’s gross negligence or willful misconduct related to this Agreement, or, (e) any fines, penalties or interest imposed on PayG on account of the Entity’s Products or transactions conducted through the Entity under this Agreement, or, (f) any claim or proceeding brought by a third party against PayG that the Entity’s Products infringes any intellectual or industrial property rights of that third party, or, (g) any breach of Warranties or breach of applicable laws under this Agreement, or, (h) Entity’s violation of applicable law in performing its obligation under this Agreement; against (1) any and all reasonable attorneys’ fees, retainers, court filing fees, arbitration fees, investigation fees, professional fees, court costs, transcript costs, fees and expenses of experts, travel expenses, duplicating costs, printing and binding costs, telephone charges, postage, delivery service fees and other disbursements or expenses of the types customarily incurred in connection with a Proceeding (collectively, the “Expenses”), and (2) any and all causes of action, claims, liabilities, losses, judgments, fines, penalties, settlement payments, awards, interest, damages (including punitive damages), diminution in value or any  other <u>charge in connection with a Proceeding (collectively, the “Losses” and together with the “Expenses”, the “Indemnity Costs”).</u>    </p>
+                                            <p> 14.2 <u>Procedure.</u> Entity shall, at PayG’s option and Entity’s expense, intervene in or defend any such Proceeding upon notice from PayG. PayG agrees to cooperate reasonably in the defense of any such Proceeding at Entity’s expense. The obligation of Entity to pay any Indemnity Costs of PayG is immediate, not subject to any right of set off of Entity, and is in no way dependant on any finding by any judicial, quasi-judicial body, fact-finding party or arbitration or mediation party.  Entity shall pay all Expenses to PayG in full at the end of each month during a Proceeding upon notice from PayG. Entity shall pay all Losses to PayG in full and immediately upon the payment of any such Loses by PayG, upon notice by PayG. </p>
+                                            <h5 class="text-left font-weight-bold"><u>15 CONFIDENTIAL RELATIONSHIP </u></h5>
+                                            <p>
+                                                For the Purpose of this Agreement the Confidential Information shall mean all nonpublic information disclosed by a PayG or its Affiliates, agents or contractors (collectively, the “Disclosing Party”) to the  Entity, its Affiliates or any agents of any of them (collectively, the “Receiving Party”) that is designated as confidential or that, given the nature of the information or the circumstances surrounding its disclosure, reasonably should be considered as confidential. Confidential Information includes (i) nonpublic information relating to the Disclosing Party’s technology, customers, business plans, business and operating processes, promotional and marketing activities, finances and other business affairs, (ii) third-party information that the Disclosing Party is obligated to keep confidential, (iii) the nature, content and existence of any discussions or negotiations between the Parties and (iv) all Cardholder Information
+                                                15.1 During the Term of this Agreement PayG may, from time to time, communicate information to Entity or its employees, or the Entity or its employees or agents may learn or acquire certain information of PayG in order to enable
+                                            </p>
+
+
+                                            <p> advised of the possibility of such damages.’ PayG SHALL NOT HAVE ANY LIABILITY ARISING FROM OR RELATING TO THESE TERMS, WHETHER IN LAW OR IN CONTRACT, IN NEGLIGENCE, IN TORT, STATUTE, UNDER A THEORY OF STRICT LIABILITY OR OTHER LEGAL THEORY OR OTHERWISE.</p>
+
+
+                                            <h5 class="text-left font-weight-bold"><u>19 CARD ASSOCIATION ASPECTS  </u></h5>
+                                            <p> 19.1 <b>PCI DSS/CISP Compliance.</b> The Entity acknowledges that if it follows processes or procedures that include access by the Entity or its employees/representatives, to Cardholder Information as typically determined by Card Associations, then Entity will be required to be compliant with PCI DSS/CISP. If PCI DSS/CISP compliance is required, then Entity will, at its sole cost and expense: (a) conduct or have conducted the audits required for PCI DSS/CISP certification; (b) obtain PCI DSS/CISP compliance certification prior to storing, processing or transmitting Cardholder Information, and (c) take all actions required for Entity to maintain PCI DSS/CISP compliance during the term of this Agreement and for any period of time after the term of this Agreement that Entity stores, processes or transmits Cardholder Information. If required to be PCI DSS/CISP compliant, Entity will remain at all times aware of changes to PCI DSS/CISP and implement such changes when required by Card Associations to do so. More information about Visa’s PCI DSS/CISP program can be obtained at <u><a>www.visa.com/cisp.</a></u></p>
+
+                                            <p> 19.2 The Parties acknowledge that the Card Association rules and/or Participating Bank policies may provide them certain rights to require action(s) by PayG, and that such action(s) may include termination or modification of this Agreement with respect to transactions involving VISA, MasterCard, American Express Cards and the VISA, MasterCard, American Express or Participating Bank systems. In the event any rights are exercised by Card Associations and/or Participating Banks requiring PayG to take action with respect to any transactions, PayG shall provide notice to Entity, and provide an opportunity to cure any alleged violation of this Agreement or any rule under which the action is taken as permitted by the applicable Association / Participating Bank. The Parties also acknowledge that issuers of other Cards, for which PayG perform Services on behalf of Entity, may provide similar rights and responsibilities under their applicable Association Rules with respect to this Agreement's applicability to transactions involving such other Cards. In the event any rights are exercised by issuer of such other Cards requiring PayG to take action with respect to any transactions, PayG shall provide notice to Entity, and provide an opportunity to cure any alleged violation of this Agreement or any rule under which the action is taken as permitted by the applicable association.</p>
+                                            <h5 class="text-left font-weight-bold"><u>20 Independent Contractor.   </u></h5>
+                                            <p> 20 <u>Independent Contractor.</u> It is agreed between the Parties that during the Term of this Agreement nothing set forth herein shall be deemed or construed to render the Parties as joint ventures. The arrangement between the Parties shall be construed on Principal-to-Principal basis.</p>
+
+                                            <h5 class="text-left font-weight-bold"><u>21 MISCELLANEOUS  </u></h5>
+                                            <p> 21.1 <u>Assignment.</u> Entity may not assign or delegate its rights or obligations under this Agreement, either in whole or in part, without the prior written consent of PayG. Any attempted assignment or delegation without PayG’s prior written consent shall be null and void.</p>
+                                            <p> 21.2 <u>Governing Laws, Jurisdiction and Dispute Resolution.</u> This Agreement shall be governed by the laws of India. Any dispute between the parties arising out of or relating to this Agreement, including with respect to the interpretation of any provision of this Agreement and with respect to the performance by Entity or PayG, shall be resolved by arbitration by a single arbitrator appointed by PayG. The arbitration proceedings shall be in accordance with the Arbitration and Conciliation Act, 1996 or any enactments in substitution thereof. The venue of the arbitration proceedings shall be at Hyderabad. The award of the arbitrator shall be</p>
+
+                                            <p>with written verification of receipt.  All communications must be sent to the addresses below or any other address as may be designated by giving written notice to the other Party.</p>
+
+                                            <table class="table table-bordered" style="width:100%">
+                                                <tr>
+                                                    <td>To PayG: </td>
+                                                    <td>To Entity:</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Kind Attention: Mr. Prabhu Kumar </td>
+                                                    <td>Kind Attention: BusinessPersonNameEdit</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Xsilica Software Solutions Pvt. Ltd,</td>
+                                                    <td> businessName</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>H.No:8-2-120/112/B/5&6, 3rd Floor, BBR Forum, Road No: 2, Banjara Hills, Hyderabad- 500034, Telangama, India</td>
+                                                    <td> BusinessAddressEdit, BusinessCityEdit,BusinessStateEdit,BusinessZipEdit </td>
+                                                </tr>
+                                            </table>
+
+
+                                        </div>
+                                        <div class="col-6">
+                                            <p>information related to (a) or (b) that may constitute non-public personal information under Applicable Law, including, but not limited to those related to data protection and privacy or from which an individual cardholder’s identity or personal particulars are apparent or can be reasonably ascertained.</p>
+                                            <p>xv. “Chargeback” means any amount which the issuer of a Card or a Bank Account or its Association, in connection with a Transaction, either (a) refuses to pay to Entity, or (b) claims or sets off as a refund from Entity or where such Transaction is disputed by a Cardholder or Bank Account holder, in each case for reasons set out in and pursuant to and in accordance with the Association Rules and Regulations  pertaining to Chargeback’s (and includes any fines, penalties that may be levied the Association or Participating Banks in this regard)</p>
+                                            <p>xvi. “Credit Transaction” means a transaction by which a refund or price adjustment or Chargeback in connection with a prior Debit Transaction is returned to a Customer’s Account via the Transaction Processing Facilities.</p>
+                                            <p>xvii. “Customer” means any person that seeks to make a payment on the Entity Website, towards purchase of goods or services from the Entity.</p>
+                                            <p>xviii. “Customer Order” or “Order” Shall mean an order by the Customer for the purchase or availing of any Product or goods or services, provided by the Entity and which Customer Order shall be specifically designated by a transaction number, on mention or use of which the details of the order could be obtained by the Customer from the Entity, including without limitation details of the status of the order.</p>
+                                            <p>xix. “Debit Transaction” or “Transaction” means a transaction, by which a Customer's payment or purchase of Products (including any taxes and shipping and handling charges) is debited from such Customer’s Account, and then processed and settled via the Services.</p>
+                                            <p>xx. “Decline Notice” means (i) an electronic message or statement transmitted by PayG to the Entity that a Payment Request has been declined by the Processing Mechanism, applicable Issuer or Participating Bank or (ii) an electronic confirmation available on the Processing Mechanism that a Payment Request has been declined.</p>
+                                            <p>
+                                                xxi. “Entity Website” means all or a portion of the Indian Rupee-denominated portion of the website, the primary homepage of which is identified by the URL
+                                                <!--<span *ngIf="isWebsitehave"><u><a href="BusinessWebSiteEdit">BusinessWebSiteEdit</a> </u></span>
+                                                <span *ngIf="!isWebsitehave"><u>__NA_</u></span>-->
+                                                <!--isWebsitehave-->
+                                                <a href="isWebsitehave">isWebsitehave</a>
+                                                and reference to mobile application named
+                                                <!--<span *ngIf="isWebsitehave"><u><a href="BusinessWebSiteEdit">BusinessWebSiteEdit</a> </u></span>
+                                                <span *ngIf="!isWebsitehave"><u>__NA__</u></span>-->
+                                                <!--isWebsitehave-->
+                                                <a href="isWebsitehave">isWebsitehave</a>
+                                                (or any successor or replacement of such website or mobile application).
+                                            </p>
+                                            <p>xxii. “Consideration” means the fees payable by the Entity as specified in clause 7. </p>
+                                            <p>xxiii. “PayG Systems” or “Processing Mechanism” means PayG’ and each of its contractor’s and subcontractor’s electronic systems performing the Services, including processing of Payment Requests, and includes any software and other Intellectual Property Rights utilized therein. For the avoidance of doubt, Participating Banks systems will not be deemed to be part of PayG Systems.</p>
+                                            <p>xxiv. “Issuer” means any the bank /entity that has issued a Card.</p>
+                                            <p id="pb-3">xxv. “Nodal Bank” means the bank (s) designated by PayG (as per the applicable guidelines /regulations of the Reserve Bank of India or any other statutory /regulatory body that may regulate PayG from time to time) for</p>
+                                            <h5 class="text-left font-weight-bold tp-2">
+                                                <u>
+                                                    2. SERVICES
+                                                </u>
+                                            </h5>
+                                            <p> 2.1 PayG shall provide to the Entity the Services of providing the Processing Mechanism for obtaining Authorisation, processing and reconciliation of payments by Customers from time to time and the Settlement Services. More specifically, as agreed between the Parties, the specification of such shall be such as has been set forth on Exhibit 1: Specification of Services ("Services"). The Services may be modified from time to time upon written agreement of the Parties by amending the Exhibit and/or execute additional Exhibits to cover other / additional services upon such terms and conditions as may be mutually agreed.</p>
+                                            <p> 2.2   The Entity acknowledges and agrees that to enable the rendering of the agreed Services herein, PayG would require integrating the Processing Mechanism with the Entity’s Website and/or with the Entity’s billing system and that the Entity shall provide the timely, accurate and professional support for effective discharge of PayG’s obligation under this Agreement</p>
+                                            <p> 2.3 It is specifically agreed between the Parties that the Entity shall test and implement the systems and procedures necessary for the Entity to receive the Services in accordance with this Agreement and shall satisfy itself with the quality of the integration and the connectivity prior to the launch of the Services for the Customer. </p>
+                                            <p> 2.4 In respect of certain Services that are dependent upon the Participating Banks, PayG shall provide to the Entity, from time to time, a list of the Participating Banks that are integrated with the PayG Processing Mechanism for such related Services. The Entity acknowledges that each Participating Bank reserves the right to not allow or keep supported the provision of the related Service (in respect of such Participating Bank) to the   Entity.</p>
+                                            <h5 class="text-left font-weight-bold"><u>3. TERM AND TERMINATION</u></h5>
+                                            <p> 3.1. Term. This Agreement shall be effective from the date of its execution and shall be valid unless terminated by either Party in accordance with the terms of this Agreement.</p>
+                                            <p> 3.2. Termination without Cause. PayG may terminate this Agreement without cause at any time by providing the Entity with at least 30 days prior written notice</p>
+                                            <p> 3.3. Termination with Cause. Either Party may, upon written notice to the other Party, terminate this Agreement  without liability in the event of the other Party’s (a) material breach of this Agreement or the obligations hereunder which, unless otherwise provided in this Agreement, remain uncured at least 14 days after written notice of such material breach from the non-breaching Party; (b) filing of a voluntary or involuntary petition in bankruptcy; (c) assignment of a substantial portion of its assets for the benefit of its creditors; or (d) inability to meet its financial obligations when due. The rights and remedies of the Parties contained herein are in addition to any other rights or remedies provided by the law.</p>
+                                            <p> 3.4. Upon termination of this Agreement: </p>
+                                            <span>3.4.1. Any outstanding indebtedness and other sums due by one Party to the other shall become immediately due and payable;</span>
+
+                                            <p>         3.4.2. Each Party shall return all documents and Confidential information of the other Party;</p>
+                                            <p>3.4.3. Each Party shall remain liable to the other for all of its obligations and indebtedness to the other arising from law or this Agreement as at the date of termination of this Agreement.</p>
+                                            <p id="pb-3"> 3.5. If this Agreement is terminated with or without cause, Entity   acknowledges that in accordance with the law, PayG may be required to report Entity’s identification to Card Associations, Participating Banks and</p>
+
+                                            <p>aggregate amount of all Credit Transactions, since the immediately preceding Business Day in respect of previously Authorized and duly settled Debit Transactions (“Net Settlement Amount”).</p>
+                                            <p> 5.4 It is agreed between the Parties that to the extent that the Net Settlement Amount for any day is negative, PayG shall be entitled to recoup the balance amounts from any amounts due to the Entity, including from the Settlement funds of subsequent days.</p>
+                                            <p> 5.5 <u>Settlement Account.</u> Nodal Bank shall remit the Net Settlement Amount to the Entity, electronically, to such account (the <b>“Settlement Account”</b>) as the Entity may specify in writing from time to time. Towards this the Entity shall issue a letter in the format as per <b>Exhibit 2</b>, outlining the details of the bank account into which it wants the remittances credited. Any change in the mode or manner of making the payments shall be as per the process and upon such terms and conditions as may be mutually agreed upon between the Parties.</p>
+                                            <p> 5.6 <u>Reconciliation.</u> PayG will provide to the Entity settlement information that will enable the Entity to reconcile the amount due to the Entity for the Debit Transactions Authorized during the applicable period against the settlement funds paid to the Entity as payment for such transactions (the <b>“Settlement Information” </b>). The Settlement Information will include both aggregate and individual transaction information necessary to enable the Entity to reconcile the amount due the Entity, debits to that amount attributable to Credit Transactions and other offsets, and such additional information the Parties agree is reasonably required for the Entity to identify and reconcile Debit Transactions.</p>
+                                            <p> 5.7 <u>Reimbursements.</u> PayG may submit a written request to the Entity to reimburse PayG for a payment that has been raised on PayG by Participating Bank(s) in respect of any transaction conducted under this Agreement. Any reimbursement request submitted by PayG to the Entity will provide in reasonable detail the specific Payment Request for which the reimbursement applies and the basis for seeking such reimbursement. The Entity will remit the amount in respect of any undisputed request to PayG within three (3) days of receipt of PayGs’ written request for reimbursement under this Clause.</p>
+                                            <h5 class="text-left font-weight-bold"><u>6 FRAUDULENT TRANSACTIONS, REVERSALS</u></h5>
+                                            <p>
+                                                6.1 It is specifically agreed between the Parties that If there are reasonable grounds to suspect that a Debit Transaction conducted has been conducted in breach of this Agreement or as a fraudulent transaction, against the Participating Banks or any Customer, the Payment Service Provider shall be entitled to suspend / withhold the payments of such Debit Transaction(s), pending enquiries by the Participating Bank and resolution of such issues. Provided further that:
+                                                (i) If Settlement has already been made to the Entity for a fraudulent or disputed transaction, the resolution for the same shall be done in accordance with the guidelines laid down by the Card Associations or the Reserve Bank of India for resolution of such disputes;
+                                                (ii) If the resolution of the fraudulent or disputed transaction, results in a Chargeback of such Debit Transaction, the Transaction Amount shall be adjusted from the Settlement funds being remitted to the Entity, on the next Business Day.
+                                                (iii) In case, there are insufficient funds available for such recovery, PayG shall make a claim on the Entity for such Transaction Amount; which, the Entity on receipt of the claim from PayG undertakes forthwith to pay to PayG. It is specifically agreed upon between the Parties that the decision of PayG shall be final and binding on both the Parties in this regard.
+                                            </p>
+                                            <p>
+                                                6.2 it is mutually agreed between the Parties that the Entity shall pay
+                                                isSetupNull
+
+                                                along with this agreement as security for the obligations (including for processing of Chargeback and refunds of Transactions) of the
+                                            </p>
+                                            <p> prior approval of, PayG’s management. As used herein: "employee" also includes members of the employee’s immediate family and household, plus any other person who is attempting to benefit from his or her relationship to the employee, " Entity" includes all employees and agents of the Entity, "gift or benefit" includes money, goods, services, discounts, favors and the like in any form, but excluding low value advertising items such as pens, pencils and calendars, and "favoritism" means partiality in promoting the interest of Entity over that of other Entity. Such activity by Entity shall constitute a material breach of this Agreement by Entity and may result in the immediate termination of this Agreement, any cure period being waived.</p>
+                                            <p> 8.2 Without limiting the generality of the foregoing, the Entity undertakes to comply in all respects with the applicable laws and shall not conduct itself or act in discharge of its duties prescribed hereunder in a manner as would render PayG or its affiliates liable for prosecution under the Prevention of Corruption Act, 1988.</p>
+                                            <h5 class="text-left font-weight-bold"><u>9 INTELLECTUAL PROPERTY</u></h5>
+                                            <p> For the purpose of this Agreement, the Intellectual Property Rights means any and all patents, copyrights, trademarks, trade secrets, service marks, designs, inventions, invention studies (whether patentable or unpatentable), mask works, domain names and registrations, trade names, secret formulae, secret processes, computer programs, confidential information, know-how and any other intellectual property or proprietary rights; any and all enhancements or derivative works of any of the foregoing; and any and all applications for any of the foregoing, in all countries in the world.</p>
+                                            <p> 9.1 Save as otherwise provided herein, the Entity shall not use or adopt, during the effectiveness of this Agreement or thereafter, in its business, business name, trade name or products, any Trade Mark that is similar to, or nearly resembles the Trade Mark of  PayG or its parent and subsidiary companies as to be likely to, or as to be calculated to mislead, cause deception or confusion, or which is graphically or phonetically similar to the Trademark of PayG or its parent or subsidiary company. The Entity agrees that it will not, during the effectiveness or after the expiry of this Agreement, challenge the validity of PayG’s Trademark or its rights therein</p>
+                                            <p> 9.2 The Entity acknowledges that for providing Services under this Agreement, PayG may utilise Application Tool(s) developed by it consisting of proprietary information and know-how, belonging either to PayG or other software vendors, all of which are and shall remain the exclusive property of PayG and / or other software vendors and the Entity shall have no right, title or interest therein of whatsoever nature, except as expressly set forth in this Agreement. Further the Entity shall use the said Application Tool(s) exclusively in respect of the Services under this Agreement</p>
+                                            <p> 9.3 Each Party acknowledges that any trademarks used or adopted by a Party in the conduct of its business is the sole property of the respective owners</p>
+                                            <p> 9.4 Except as expressly set out in this Agreement no assignment of or license under any Intellectual Property Right or trade mark or service mark, whether registered or not, owned or controlled by a Party is granted to the other by this Agreement</p>
+                                            <p> 9.5 No Party may, under any circumstances, seek to register any trademark, business name, business processes, inventions, company name, domain name using or incorporating the Intellectual Property of the other Party</p>
+                                            <p> 9.6 Each Party acknowledges that upon termination of this Agreement, it shall have no right whatsoever in connection with the Intellectual Property of the other Party.</p>
+                                            <p>standards authority including pursuant to PCI DSS, as applicable, and any modifications to or replacements of such programs that may occur from time to time</p>
+                                            <p> 11.5 It is acknowledged and agreed by the Entity that, in accordance with and to the extent permitted by law, PayG may use, data collection devices such as "cookies" or other technology to obtain certain types of information. PayG shall have unfettered right to use this information analytics, marketing and other business purposes</p>
+                                            <h5 class="text-left font-weight-bold"><u>12 RIGHT TO AUDIT   </u></h5>
+                                            <p> The Entity agrees to maintain and make available for examination and audit by PayG and its representatives for a period of three (3) years after conclusion of this Agreement (a) accurate records necessary to disclose the transactions concluded under this Agreement  (b) those Controls records required to certify compliance with the Internal Controls Requirements Section of this Agreement, and/or (c) those records necessary to verify compliance with the provisions of this Agreement. PayG and its representatives shall have the right to audit such records during normal business hours upon twenty-four (24) hour notice to Entity. </p>
+                                            <h5 class="text-left font-weight-bold"><u>13 WARRANTIES  </u></h5>
+                                            <p>
+                                                13.1 Each Party represents and warrants to the other that:
+                                                i. all information contained or referred to in this Agreement or which has otherwise been disclosed by either Party or their agents to the other Party, are true and accurate and that neither Party is aware of any fact or matter, which renders any such information misleading;
+                                                ii. Parties have disclosed all Information, which is, or may be of reasonable relevance to the other Party’s interest and willingness to enter into this Agreement including but not limited to providing of the Services on the terms hereof;
+                                                iii. it has full power, capacity and authority to execute, deliver and perform this Agreement and it has taken all necessary action (corporate, statutory or otherwise), to execute, deliver, perform and authorize the execution, delivery and performance of this Agreement;
+                                                iv. this Agreement constitutes a valid and binding agreement of such party, enforceable in accordance with its terms;
+                                                v. neither the execution of this Agreement, nor compliance with its terms will be in conflict with or result in the breach of or constitute a default or require any consent under: a) any provision of any agreement or other instrument to which such Party is a Party or by which it is bound; b) any judgment, injunction, order, decree or award which is binding upon such Party; and/ or such Party's memorandum or articles of association;
+                                                vi. the consents, permissions and/or licenses as may be necessary and if required for performing its obligations under this Agreement will be obtained; and
+                                                vii. the use of the Service will not violate or be in breach of any applicable law, code, rules / regulations, order of any court / tribunal / Authority or any agreement or any other instrument to which either of them is a party.
+                                            </p>
+                                            <p> 13.2 The Entity warrants that (a) it has satisfied itself that PayG possesses the requisite expertise, experience, manpower, facilities and equipment necessary and appropriate to perform the Services; (b) it has obtained all statutory registrations, certificates, licenses and approvals required under the law enabling it to execute this Agreement in a legal and lawful manner, including compliance with the applicable laws in letter and spirit; (c) the Entity shall not do any covert or overt act or engage in any illegal, deceptive, misleading, unethical or improper practice or any other practices which may adversely affect or in any way injure the reputation of PayG and shall ensure that the Entity’s personnel adhere to the same; (d) it shall make no false or misleading representations or warranties or make any commitments or give any undertaking or incur any liability on behalf of PayG and shall ensure that its personnel also adhere to the same; These warranties, and all other warranties, express or implied, shall survive acceptance, non-inspection, payment and termination of this Agreement.</p>
+                                            <p>
+                                                that the integrity of the link between the Entity Website, PayG’ Website and the Processing Mechanism is maintained at all times during the term of this Agreement. In the event of any loss being caused as a result of the link being breached or as a consequence of the link being improper or being in violation of the provisions of this Clause, the loss shall be to the account of the Entity and the Entity shall indemnify and keep indemnified PayG from any loss as may be caused in this regard.
+                                                x. The Entity shall (whether on-line or otherwise) (a) Not describe itself as agent or representative of the Payment Service Provider or Card Associations; (b) Not make any representations to Customer or any third party or to give any warranties which may require the Participating Banks or Card Associations to undertake to or be liable for, whether directly or indirectly, any obligation and/or responsibility to Customer or any third party and (c) Comply and update itself with the guidelines, regulations, procedures and amendments issued by any government, quasi government, statutory authority, Card Associations or any other institution regulating card business which may have an effect on this Agreement or any Card transactions.
+                                                xi. The Entity shall not at any time require the Customer to provide it with any details of the Card or Bank Accounts held by them including, the passwords, and PIN which may be assigned to them by the Participating Bank or Card Issuer from time to time.
+                                                xii. The Entity shall not use Services and facilities in any manner or in furtherance of any activity, which constitutes a violation of any law or regulation, or which may cause the Participating Banks, Card Associations or PayG to be subject to investigation, prosecution or legal action. The Entity shall use the information regarding a Customer conveyed to the Entity by the Payment Service Provider, only for the purpose of completing the transactions for which it was furnished, and not to sell or otherwise furnish such information to others unless the Entity has an independent source of such information or obtains the express consent of such Customer.
+                                            </p>
+                                            <p> 13.4 <u>Customer Support.</u> The Entity shall provide a commercially reasonable level of customer support to Customers. Such support shall include appropriate notice to Customers, as may be applicable of (i) a means of contacting the Entity in the event the Customer has questions regarding the nature or quality of the goods or services that the Entity offers for sale; (ii) procedures for resolving disputes; (iii) an option to confirm an order placed and status of order through an on-line help desk and a telephonic help desk; (iv) an off-line/ online database of all deliveries made and access to confirmation of proof of delivery / dispatch for PayG by quoting the order number; and (v) a display of the Entity’s refund policy on the site with respect to the terms and conditions relating to refund of the Transaction Amount of the Products, manner and duration of returns, exchange, etc on the specific acceptance of which the Customer will be able to make payments for their transactions online.</p>
+                                            <p> 13.5 <u>Chargeback Of Transactions.</u> The Payment Service Provider shall be entitled at any time to refuse making a total or partial payment to the Entity or if payment has been made to debit the Entity’s account or to seek immediate reimbursement from the Entity, notwithstanding any Authorization given by the Participating Bank to the Entity, in the event of a Chargeback being initiated on any of the transactions conducted under this Agreement. The process and conditions applicable for such Chargeback shall be as per the requirements/guidelines of Visa/MasterCard/American Express/RBI/ Participating Banks/Local Clearing House or any other institution regulating the payments business.</p>
+                                            <p> 13.6 <u>Disputes Regarding Products</u> Where the Customer has placed an Order for a Product and the Entity is unable to effect delivery of the same within the time period communicated to the Customer when the Order was placed, the Entity shall wholly cancel or partly cancel the amount of the Order which it is unable to effect delivery.</p>
+                                            <p>PayG to effectively perform the Services. The Entity and its employees and agents shall treat all such information, including this Agreement, as confidential, whether or not so labeled or identified, and shall not disclose any part thereof without the prior written consent of PayG.</p>
+                                            <p>
+                                                15.2 Employees and Agents. The Entity shall limit the use and circulation of such information even within its own organization and shall disclose PayG’s confidential information to its employees or agents who are under obligations of confidentiality on a need-to-know basis only. The Entity shall secure written agreements from any and all of its employees and agents to whom PayG’s information is disclosed, binding them to obligations comparable to those set forth herein.
+
+                                                15.3 Ownership. All Confidential Information will remain the exclusive property of the Disclosing Party. The Disclosing Party’s disclosure of Confidential Information will not constitute an express or implied grant to the Receiving Party of any rights to disclose the Confidential Information or under the Disclosing Party’s Intellectual Property Rights.
+
+                                                15.4 Non-Publicity. Without prior written consent of PayG, the Entity shall not (a) make any news release, public announcement, denial or confirmation of this Agreement or its subject matter, or (b) disclose any reports, recommendations, conclusions, products of the Services or documentation regarding the foregoing.
+                                            </p>
+                                            <h5 class="text-left font-weight-bold"><u>16 COMPLIANCE WITH LAWS </u></h5>
+                                            <p> Entity represents and warrants continued compliance with all Central, State and local laws, ordinances and regulations applicable to this Agreement. The Entity shall comply with all the provisions of labour industrial & information technology laws, FEMA, RBI guidelines and other laws, rules and regulations as may be applicable from time to time for the discharge and completion of this Agreement by the Entity. In the event of any liability arising out of failure to observe or non-compliance of any such laws by the Entity in discharge of this Agreement, the Entity shall bear all the resultant whatsoever liability(ies), if any, arising out thereof and that PayG and its management shall not be liable for any such liability(ies). The Entity agrees to indemnify and keep PayG and its management indemnified against all losses,  costs, damages, claims, penalties, interest, expenses, demands, fines, legal liability, causes of action, injury to persons, etc which may be suffered, incurred, undergone and / or sustained by PayG including the costs and expenses that may be incurred in defending any such liability(ies) claim(s), proceeding(s) etc. that may be made or taken or arise on the same by any person, body, authority, government, judicial / quasi judicial authority due to the failure or non compliance of any such laws and rules there under (including any amendments in acts, laws, statutes & rules there under) of whatsoever kind and nature arising out of or in any way connected with, whether or not such acts or omissions are actual or alleged, active or passive with regard to the discharge of this Agreement. </p>
+
+                                            <h5 class="text-left font-weight-bold"><u>17 NO CONFLICT  </u></h5>
+                                            <p> 17.1 <u>No Conflict.</u> Entity represents and warrants that Entity is not obligated under any agreement with a third party that conflicts with the provisions of this Agreement. </p>
+                                            <p> 17.2 <u>Breach.</u> The Parties acknowledge that if Entity breaches this No Conflict Section or Section 8 Ethical Standards or Section 16 Compliance with Laws, PayG may immediately terminate this Agreement upon notice without an opportunity to cure and without further liability to Entity. This remedy is in addition to any other remedy available to PayG for such breach.</p>
+                                            <h5 class="text-left font-weight-bold"><u>18 LIMITATION OF LIABILITY  </u></h5>
+                                            <p> Under no circumstances shall PayG or the Entity be liable for any special, indirect, incidental, exemplary, special or consequential loss or damages, inter alia including, loss of profit, loss of use, loss of revenues or damages to business or reputation arising from the performance or non-performance of any aspect of this agreement even if the party has been </p>
+                                            <p> final and binding upon the Parties and non-appealable and the Parties agree to be bound by the same and the successful Party may seek to enforce the same in a court having jurisdiction. Subject to the foregoing, the parties submit themselves exclusively to the jurisdiction of competent courts at Hyderabad.</p>
+                                            <p> 21.3 <u>Severability.</u> Each provision of this Agreement or portion thereof is considered to be independent. If any portion of this Agreement shall be found to be illegal, invalid or contrary to public policy the same may be modified or stricken by a court of competent jurisdiction to the extent necessary to allow the court to enforce such provision in a manner which is as consistent with the original intent of the provision as possible, and the revised stipulation and the remainder of this Agreement shall continue in full force and effect. </p>
+
+                                            <p> 21.4 <u>Headings.</u> The headings contained herein are for reference only and shall not affect in any way the meaning and interpretation of the terms and conditions set forth herein.</p>
+                                            <p> 21.5 <u>Force Majeure.</u> Neither Party shall be liable to the other for delay in performing or failure to perform any of its obligations hereunder if and to the extent that such delay or failure to perform is due to any cause beyond its control which could not have been reasonably foreseen and avoided by the exercise of due care and diligence consistent with the exercise of reasonable business judgment. If either Party is so delayed or unable to perform its obligations as a result thereof, in whole or in part, such Party shall promptly notify the other Party thereof in writing, explaining the reason for such delay or inability to perform and shall, to the extent reasonable and lawful under the circumstances, use its reasonable endeavors to remove or remedy such cause as soon as possible.</p>
+                                            <p> 21.6 <u>No Waiver.</u>  The failure of either Party to enforce at any time any provision of this Agreement shall not be construed to be a waiver of such provision or the right thereafter to enforce each and every provision hereof.  No waiver by either Party, either express or implied, of any breach of these terms or conditions shall be construed as a waiver of any other term or condition.</p>
+                                            <p> 21.7 <u>Survival.</u> The provisions of this Agreement that by their nature continue in effect shall survive the termination or expiration of this Agreement. </p>
+                                            <p> 21.8 <u>Entire Agreement.</u> This Agreement, including all Exhibits, Attachments constitutes the entire agreement between the Parties in connection with the subject matter hereof and supersedes all prior agreements, understandings, negotiations, and discussions, whether oral or written, between the Parties. No amendment to or modification of this Agreement shall be binding unless in writing and signed by a duly authorized representative of PayG and Entity.</p>
+                                            <p> 21.9 <u>Conflicting Terms.</u> In the event of a conflict or inconsistency between the terms and conditions of this Agreement and any other document, including Entity’s terms of sale, invoices, or preprinted terms, the Exhibits listed herein, or any additional terms contained in any of the foregoing documents, the terms and conditions of this Agreement shall control without such additional terms deemed added.</p>
+                                            <p id="pb-3">
+                                                21.10 <u>Notices.</u> All notices, except for invoices which should be sent to the address above, required or permitted under this Agreement shall be in writing and shall be deemed given (a) when delivered personally, (b) when sent by confirmed fax, (c) three (3) days after having been sent by registered or certified mail, return receipt requested, postage prepaid, or (d) one (1) day after deposit with
+                                                a commercial overnight carrier,
+                                            </p>
+
+                                            <h5 class="text-left font-weight-bold"><u>22. EXHIBITS  </u></h5>
+                                            <p>
+                                                The following Exhibits are attached hereto and incorporated by reference herein:
+                                                Exhibit 1:  Description of Services
+                                                Exhibit 2: Details for Remittance of Funds
+                                                Exhibit 3:  Fee Details
+                                                Exhibit 4: Transaction Processing Fee
+                                                <!-- Exhibit 4 (b) MIS, Reconciliation and Aggregation Fees -->
+                                            </p>
+
+                                        </div>
+
+                                    </div>
+                                    <div class="col-md-12 pt-4">
+                                        <p>IN WITNESS WHEREOF, the Parties have duly executed this Agreement the day and year first set forth above.</p>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <div class="mt-4">
+                                            <p class="mb-0">Xsilica Software Solutions Pvt. Ltd,</p>
+                                            <!-- <table class="table table-border" width="0">
+                                            <tbody>
+                                            <tr>
+                                            <td width="42">
+                                            <p>By:</p>
+                                            </td>
+                                            <td width="281">
+                                            <p><strong>&nbsp;</strong></p>
+                                            </td>
+                                            <td width="42">
+                                            <p>By:</p>
+                                            </td>
+                                            <td width="275">
+                                            <p><strong>&nbsp;</strong></p>
+                                            </td>
+                                            </tr>
+                                            <tr>
+                                            <td width="42">
+                                            <p>Title:</p>
+                                            </td>
+                                            <td width="281">
+                                            <p><strong>&nbsp;</strong></p>
+                                            </td>
+                                            <td width="42">
+                                            <p>Title:</p>
+                                            </td>
+                                            <td width="275">
+                                            <p><strong>&nbsp;</strong></p>
+                                            </td>
+                                            </tr>
+                                            <tr>
+                                            <td width="42">
+                                            <p>Date:</p>
+                                            </td>
+                                            <td width="281">
+                                            <p><strong>&nbsp;</strong></p>
+                                            </td>
+                                            <td width="42">
+                                            <p>Date:</p>
+                                            </td>
+                                            <td width="275">
+                                            <p><strong>&nbsp;</strong></p>
+                                            </td>
+                                            </tr>
+                                            <tr>
+                                            <td colspan="2" width="323">
+                                            <p><strong>Witness</strong></p>
+                                            </td>
+                                            <td colspan="2" width="317">
+                                            <p><strong>Witness</strong></p>
+
+                                            </td>
+                                            </tr>
+                                            </tbody>
+                                            </table> -->
+
+                                            <table class="table table-bordered" style="width:100%">
+                                                <tr><td>By:</td> <td>Prabhu Kumar</td>  <td>By:</td> <td>BusinessPersonNameEdit</td></tr>
+                                                <tr><td>Title:</td> <td>Sales Director</td>  <td>Title:</td> <td>Merchant Representative</td></tr>
+                                                <tr><td>Date:</td> <td>merchantCreateddate</td>  <td>Date:</td> <td>merchantCreateddate</td></tr>
+                                                <tr>
+                                                    <td colspan="2" style="height: 50px;">Witness</td>
+                                                    <td colspan="2" style="height: 50px;">Witness</td>
+                                                </tr>
+                                            </table>
+
+                                        </div>
+
+                                    </div>
+
+
+                                    <!-- <div style="padding-top: 50%"></div> -->
+                                    <!-- EXHIBIT 1 -->
+                                    <h5 class="text-center font-weight-bold pt-3"><u>EXHIBIT-1 </u></h5>
+                                    <p> The Agreement provides that PayG will provide the Entity certain Services permitting payments, through one or more channels, by Customers for any Product availed by them from the Entity. This Exhibit sets forth terms that apply as part of the Agreement and relate to each channel.</p>
+                                    <p> Certain terms specific to the Services have been defined herein in this Exhibit. Unless the context clearly indicates otherwise, any capitalized terms used but not defined herein shall have the meanings set forth in the Agreement.</p>
+
+
+                                    <h5 class="text-left font-weight-bold">1. DEFINITIONS</h5>
+                                    <p>For the purpose of this Exhibit 1- the following terms shall have the meanings set forth below:</p>
+                                    <table class="table table-bordered" style="width:100%;border: none;">
+                                        <tr><td>1.1</td><td>Payment Gateway Facility</td><td>Shall refer to the payment facility of PayG offered either directly and/or through Entity and/or through any Participating Bank and includes reference to the NetBanking Facility and Card Gateway Facility, both jointly and severally, as the context may require;</td></tr>
+                                        <tr><td>1.2</td><td>NetBanking Facility</td><td>Shall refer to such facility of PayG that will enable the Customer(s) to make payments to the Entity by an online debit to their Bank Account, using net banking or any other mode offered by the Payment Service Provider.</td></tr>
+                                        <tr>
+                                            <td>1.3</td>
+                                            <td>Card Gateway Facility</td>
+                                            <td>
+                                                Shall refer to such facility of PayG that will enable the Customer(s) to make payments to the Entity by charge to their Card and accessing the service either (a) through the Internet; or (b) through a telephone-based system; or (c) through any
+                                                other online channel;
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <!-- <div cal="row">
+                                    <div class="col-md-2">1.1</div>
+                                    <div class="col-md-4">Payment Gateway Facility</div>
+                                    <div class="col-md-6">Shall refer to the payment facility of PayG offered either directly and/or through Entity and/or through any Participating Bank and includes reference to the NetBanking Facility and Card Gateway Facility, both jointly and severally, as the context may require;</div>
+                                    </div> -->
+
+
+
+                                    <h5 class="text-left font-weight-bold py-2"><u>2. USE OF NET BANKING FACILITY AND CARD GATEWAY FACILITY </u></h5>
+                                    <p> If a Customer elects to make a payment to the Entity, including for any purchase/ transactions on the Entity Website, via a Debit Transaction and the Entity accepts such Debit Transaction, the Entity may, submit a Payment Request in respect of such Debit Transaction to PayG.</p>
+                                    <p> (a) At the time of the Customer initiating the Payment Request, the Customer shall be given a specific Customer Order number and the Customer will be required to record the same; this Customer Order Number will be generated by the Entity if the Customer is initiating the Payment Request from the Entity Website and by PayG if they are being accessed from the Payment Service Provider channel.</p>
+                                    <p> (b) Thereafter the Customer will be redirected appropriately to enable the Customer to access and use the Payment Gateway Facility and during such access shall quote /check /confirm (as applicable) the Order number and the Transaction Number;</p>
+                                    <p> (c) The Customer shall ensure that all details as are required by PayG are accurately provided;</p>
+                                    <p>
+                                        (d) If the Customer elects to use the Net Banking Facility:
+                                        i. The Customer would be directed to the web site of the relevant Participating Bank and upon the Customer being Authenticated by the Participating Bank the
+
+                                        Customer would be required to provide the Participating Bank with valid transfer instructions.
+                                        ii. On receipt of the said transfer instructions from the Customer, the Participating Bank shall Authorise the same and debit the Customer’s Account to the extent of free, clear and available funds.
+                                        iii. Upon receiving such intimation from the relevant Participating Bank
+                                    </p>
+                                    <p> (e) where the Transaction is successfully processed, PayG shall transmit the Approval Notice;</p>
+                                    <p> (f) where the Transaction is not successfully processed, PayG shall transmit the Decline Notice;</p>
+                                    <p>
+                                        (g) If the Customer elects to use a Card (not being an International Card):
+                                        i. Customer would be directed over the Card Gateway Facility
+                                        ii. Customer would have to provide the relevant Card details.
+                                        iii. On receipt of such request, PayG shall route the Transaction using the Transaction Processing Facility and obtain Authentication and Authorisation for the Transaction.
+                                    </p>
+                                    <p>
+                                        (h) Upon receiving such intimation from the relevant Participating Bank.
+
+                                        i. where the Transaction is successfully processed, PayG shall transmit the Approval Notice;
+                                        ii. where the Transaction is not successfully processed, PayG shall transmit the Decline Notice;
+                                    </p>
+                                    <p> (i) If the Customer elects to use an International Card, although the authorisation would be processed, there would be no actual Authorisation process being completed and all approvals would be subject to actual subsequent authentications and authorisations.</p>
+                                    <p> (j) The Entity shall thereafter, (as the case may be) update the Customer(s) account for the payment, dispatch/deliver the Products (where applicable) the Customer in the manner contracted with the Customer; the Entity shall adopt such delivery standards as may be mutually acceptable. In the event of the delivery involving the dispatch of any Product to the Customer the dispatch / courier instructions shall clearly capture the details of the Customer Order including the Transaction Number in order to enable identification of the Products dispatched.</p>
+                                    <p> (k) In respect of the bill payments made by the Customer(s), the Entity shall provide a return message in confirmation of the payment updation in the Customer(s) account with the Entity;</p>
+                                    <p> (l) In case of the purchase of any Product, the Entity shall provide the proof of delivery, electronically or otherwise, to the satisfaction of the Payment Service Provider. The Payment Service Provider reserves the rights to call for proof of delivery in respect of the Product. All proof of delivery of Products shall be maintained by the Entity for a period of at least one year from the date of delivery by the Entity and shall be open to inspection by the Payment Service Provider at any time whatsoever.</p>
+
+                                    <p> In select cases, where applicable, where Customers are given the facility of initiating the Transaction from any channel supported by the Payment Service Provider (viz. Participating Bank Net Banking website etc.) all the processes and obligations of the Parties shall remain the same.</p>
+                                    <p> In respect of the Payment Gateway Facility, the Entity shall</p>
+                                    <p> (a) provide appropriate information, support and access that will enable the integration of the Processing Mechanism with the Entity Website</p>
+                                    <p> (b) route the relevant Transactions of the Customer(s) to the Processing Mechanism, along with the necessary transaction/identification details, to enable the Customer(s) to issue a Payment Request for making a payment to the Entity</p>
+                                    <p> (c) ensure that the payment information/data provided by PayG to Entity is posted to the Customer(s) account, correctly, accurately and in a timely manner, consistent at all times with at-least the same standard of service that Entity normally provides to the non-Customer(s).</p>
+                                    <p> (d) furnish to PayG confirmation of the payments received from PayG including the confirmation of a reconciled position of the payments received in such format and at such intervals as may be mutually agreed to between the Parties, so however that there is at least one such confirmation every month.</p>
+                                    <p> (e) accept the acknowledgement/ receipt, issued or caused to be issued by PayG in respect of the Payment Request of the Customer(s), as valid proof of the issuance of the Payment Request and to not penalize the Customer(s) who present the acknowledgment as proof of payment.</p>
+                                    <p> (f) provide appropriate customer care procedures for resolving any Customer(s) query / dispute in respect of the payments made by them through PayG and for providing information relating to use of the Payment Gateway Facility to the Customers.</p>
+
+
+                                    <h5 class="text-left font-weight-bold"><u>3. Chargebacks </u></h5>
+                                    <h5 class="text-left py-2"><u>3.1 Reasons for Chargeback’s (<b>‘Chargeback Event’</b>) </u></h5>
+                                    <p>
+                                        Entity acknowledges that Participating Banks, Issuers and their Associations have reserved the right to reject, refuse to pay and/or Chargeback Transactions for various reasons, including but not limited to:
+                                        (i) Any charge/ debit on a Card, which is a suspect charge/debit or is thought to be irregular or fraudulent in nature by the Participating Bank in its sole opinion and assessment.
+                                        (ii) Any charge/debit on a Card for a Product in an amount in excess of the price of that Product stated on the Entity Website.
+                                        (iii) Any charge/debit on a Card for a Product, which remains undelivered after the time for delivery stipulated on the Entity Website concerned.
+                                        (iv) Any charge/debit on a Card arising out of any hacking, breach of security or encryption (if any) that may be attributable to the Entity due to the manner in which the Entity handled Cardholder Information or cardholder/ transaction details.
+                                        (v) The transaction is for any reason unlawful or unenforceable.
+                                        (vi) Any information presented electronically in respect of the Transaction is not received in accordance with the Participating Banks requirements from time to time.
+                                        (vii) Any transaction made through a card outside the territory authorized for the use of the card.
+                                        (viii) The goods and /or services covered by the Transaction are rejected or returned or the transaction or part thereof, is validly cancelled or terminated by a Cardholder or if the Entity fails to provide at all or to the Cardholder’s satisfaction, goods and/or services to the Cardholder.
+                                        (ix) The Cardholder disputes the nature, quality or quantity of the goods and/or services covered by the transaction.
+                                        (x) The Cardholder disputes or denies the transaction or the sale or delivery of goods and/or provision of services covered by the transaction with reasons.
+                                        (xi) Transaction is posted more than once to the Cardholder’s account.
+                                        (xii) The transaction is doubtful or erroneously paid to the Entity.
+                                    </p>
+                                    <h5 class="text-left"><u>3.2  Retrieval Requests</u></h5>
+                                    <p> Entity must respond to a Retrieval Request with a copy of the Transaction Receipt within the time frame specified in each such Retrieval Request</p>
+                                    <h5 class="text-left"><u>3.3 Processing Chargeback’s</u></h5>
+                                    <p> (a) PayG will have the right to charge to Entity by means of set off the full amount of any Chargeback. Entity will fully co-operate with PayG in complying with the Association rules and regulations regarding Chargeback’s. If Entity desires to dispute any Chargeback with the Issuer or its Association, it will follow the procedures set out in the Issuer’s or Association’s rules or regulations.</p>
+                                    <p> (b) If in respect of any Card Transaction, PayG is intimated whether by any of the Card Associations or by the Card Issuer of the Customer requiring a refund of the Transaction Amount (<b>“Chargeback Refund Intimation”</b>), PayG shall notify the Entity of the same. On such notification the Entity shall promptly provide such details, data or information regarding the relevant Card Transaction as the Payment Service Provider may require.</p>
+                                    <p>(c) On receiving the Chargeback Refund Intimation and after obtaining such information as it considers necessary in this regard, the Participating Bank may, per the applicable Card Association guidelines in that regard, determine that a Chargeback Event has occurred or otherwise determines that a refund should be ordered, direct PayG to require the Entity to refund the amounts received by the Entity in respect of such Card Transaction (“Chargeback Refund Direction”). The Entity hereby acknowledges and agrees that on the Chargeback Refund Direction being issued by the Participating Bank, the Entity shall refund the amounts received by the Entity in respect of such Card Transaction (“Refund Monies”) by (i) remitting the monies to PayG or (ii) allowing a set-off from the subsequent Settlements to be made to the Entity.</p>
+
+                                    <h5 class="text-left font-weight-bold"><u>4. OTHERS </u></h5>
+                                    <p> (a) The Entity also acknowledges that the services provided by the Participating Bank(s) to PayG which is passed on to the Entity under this Agreement, can be brought to an abrupt end in any event whatsoever by the Participating Bank(s) for any reason whatsoever. In this regard, the Entity acknowledges that PayG’ ability to provide the Services, at any time, is contingent upon the respective Participating Banks, agreeing to allow and continuing to allow, the usage of the Processing Mechanism by the Entity for collection of Transaction Amount(s) from its Customers as also subject to such regulatory restrictions as may be applicable to PayG from time to time. In the event of any Participating Bank not agreeing to extend or keep extended, for any reason whatsoever, the usage of the Processing Mechanism for processing transactions of the Entity and/or its Customers, or in the event of any regulatory restrictions imposed on PayG in this regard, PayG shall not be able to provide/keep provided the Services in respect of that particular Participating Bank.</p>
+                                    <p> (b) PayG’ sole obligation and the Entity’s sole and exclusive remedy in the event of interruption to the Services or loss of use and/or access to Processing Mechanism , shall be to use all reasonable endeavors to restore the Services and/or access to the Processing Mechanism as soon as reasonably possible.</p>
+                                    <p> (c) It is hereby clarified that PayG is not providing to the Entity any warranty or covenant on the quality or service provided by the Participating Banks.</p>
+                                    <p> (d) Entity acknowledges and understands that the information provided by PayG in the performance of its Services under this Agreement is not generated by PayG, but that it is merely transmitting the data as received from the Participating Banks/ other partners. As such PayG does not guarantee and shall not be deemed to have guaranteed, the timeliness, sequence, accuracy, completeness, reliability or content of the information. PayG shall not be liable for any inaccuracy, error or delay in, or omission of (a) any such data, information or message, or (b) the transmission or delivery of any such data, information or message; or any loss or damage arising from or occasioned by (i) any such inaccuracy, error, delay or omission, (ii) non-performance, or (iii) interruption in any such data, information or message, due to any "Force Majeure" event or any other cause beyond the reasonable control of PayG.</p>
+
+
+                                    <!-- EXHIBIT 2 -->
+                                    <div id="paddingExhibits">
+                                    </div>
+                                    <h5 class="text-center font-weight-bold"><u>EXHIBIT-2 </u></h5>
+
+
+                                    <p>Xsilica Software Solutions Pvt. Ltd,</p>
+                                    <p>H.No:8-2-120/112/B/5&6, 3rd Floor,</p>
+                                    <p>BBR Forum, Road No: 2, Banjara Hills, </p>
+                                    <p>Hyderabad- 500034, Telangana, </p>
+                                    <p>India</p>
+                                    <p>merchantCreateddate</p>
+                                    <h5 class="text-center"><b>Remittance of Funds</b></h5>
+                                    <p>This is with reference to the payment and collections management services offered by Xsilica Software Solutions Pvt. Ltd  (‘PayG’) to businessName </p>
+                                    <p>In this regard, we confirm that the Nodal Bank remit the monies to us to our bank account, as per details mentioned below:</p>
+
+
+
+                                    <table class="table table-bordered" style="width:100%">
+                                        <tr class="black-b">
+                                            <td class="black-b">Entity Name</td>
+                                            <td class="black-b">BeneficiaryNameEdit</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="black-b">Payment Mode</td>
+                                            <td class="black-b">NEFT/RTGS/ACCOUNT TRANSFER</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="black-b" d>Bank Name</td>
+                                            <td class="black-b">BankNameEdit</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="black-b">Branch where account is held</td>
+                                            <td class="black-b">BranchNameEdit</td>
+                                        </tr>
+
+                                        <tr>
+                                            <td>Description of account name</td>
+                                            <td>BankAccountType</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Bank Account Number</td>
+                                            <td>BusinessBankAccountNumberEdit</td>
+                                        </tr>
+                                        <tr>
+                                            <td>RTGS IFS Code</td>
+                                            <td>iFSCCodeEdit</td>
+                                        </tr>
+                                        <tr>
+                                            <td>NEFT IFS Code</td>
+                                            <td>iFSCCodeEdit</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="height: 50px;">Bank Address</td>
+                                            <td style="height: 50px;">BranchNameEdit</td>
+                                        </tr>
+
+                                    </table>
+
+                                    <p>Yours faithfully </p>
+                                    <p>For  businessName </p> <br />
+                                    <p>Name: BusinessPersonNameEdit</p>
+                                    <p>Designation:  Merchant Representative</p>
+
+                                    <!-- EXHIBIT 3 -->
+                                    <div id="paddingExhibits3"></div>
+
+                                    <h5 class="text-center font-weight-bold"><u>EXHIBIT 3 </u></h5>
+                                    <p>The fees to be paid by the Entity to PayG shall be computed and paid as specified hereinbelow:</p>
+
+                                    <table class="table table-bordered" style="width:100%">
+                                        <tr>
+                                            <td>[A]</td>
+                                            <td>Integration and Service Setup Fee</td>
+                                        </tr>
+                                        <tr>
+                                            <td></td>
+                                            <td>
+                                                isSetupNull
+                                            </td>
+                                        </tr>
+                                    </table><br />
+
+                                    <table class="table table-bordered" style="width:100%">
+                                        <tr><td>[B]</td><td class="text-center" colspan="4"> Transaction & Aggregation Related Fees</td></tr>
+                                        <tr>
+                                            <td></td>
+                                            <td></td>
+                                            <td>Transaction Processing Fee</td>
+                                            <td>
+                                                Platform Aggregation, MIS &
+                                                Reconciliation Fees
+                                            </td>
+                                            <td>Total Fees</td>
+                                        </tr>
+
+                                        <tr>
+                                            <td>1</td>
+                                            <td>Debit Card Gateway Facility Fee</td>
+                                            <td>
+                                                DcText
+
+                                            </td>
+                                            <td>NA</td>
+                                            <td>
+                                                DcText
+
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td>2</td>
+                                            <td>Net Banking Facility Fee</td>
+                                            <td>
+                                                NbText
+
+                                            </td>
+                                            <td><u>NA</u></td>
+                                            <td>
+                                                NbText
+
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td>3</td>
+                                            <td>Credit Card Gateway Facility Fee (Visa, MasterCard, Rupay)</td>
+                                            <td>
+                                                creditcardtext
+
+                                            </td>
+                                            <td><u>NA</u></td>
+                                            <td>
+                                                creditcardtext
+
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td>4</td>
+                                            <td>Wallets and Pre Paid Instruments (PPI’s)</td>
+                                            <td>
+                                                wallettext
+
+
+
+                                            </td>
+                                            <td><u>NA</u></td>
+                                            <td>
+                                                wallettext
+
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td>5</td>
+                                            <td>UPI </td>
+                                            <td>
+
+                                                Upitext
+                                            </td>
+                                            <td><u>NA</u></td>
+                                            <td>
+
+                                                Upitext
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td>6</td>
+                                            <td>PrePaid Cards </td>
+                                            <td>
+                                                PcText
+
+                                            </td>
+                                            <td><u>NA</u> </td>
+                                            <td>
+                                                PcText
+
+                                            </td>
+                                        </tr>
+
+                                    </table>
+
+
+
+
+                                    <h5><b>Terms of Payment:</b></h5>
+                                    <!-- //to do need to check Intergration feevalue to display if no data display the wavedOff -->
+                                    <p>
+                                        (a) Integration Fees would be paid
+                                        isSetupNull
+
+                                        on the commencement of the integration activity and balance on completion of the activity.
+                                    </p>
+                                    <p> (b) Fees in respect of any product customization activity and towards channel-integration effort would be charged on a time and effort basis as per then applicable rates.</p>
+                                    <p> (c) GST and other tax / taxes if any applicable, will be charged in addition. Payment of all fees shall be as provided in the Agreement and be set off on a daily basis from the Transaction Amounts being remitted to Entity. In the event of there being any fees / part of fees / component of fees that is not so set off on a daily basis, the same shall be invoiced by PayG and paid by Entity on a monthly basis. Payment on any such invoice shall be made by Entity within 30 days of receipt of invoice</p>
+                                    <p> (d) The transaction-processing fee is based on the current level of interchange/clearing house charges/Participating Bank charges. Any additional charges levied by these entities now or any time in future for processing of such transactions or on account of failed transactions etc. will be charged to Entity in addition to the above-mentioned transaction processing fee</p>
+                                    <p> (e) In respect of any failed transactions of any of the Customers, processed through this service, the transaction failure charges payable if any to the Participating Banks, in respect of the failed transactions shall be charged additionally to the Entity by PayG</p>
+                                    <!-- <p> (f) All transaction and aggregation fees (as per Item B above) will be subject to a minimum of Rs. __________/- per Transaction.</p>  -->
+                                    <p> (f) Any payments by one Party to the other would be made after deducting taxes as per prevalent statutory provisions, for which the Party making the deduction would issue the requisite certificate within the prescribed period.</p>
+                                    <p> (g) For any delayed remittance of payments interest @ 18% p.a. would be charged on the amounts so delayed, for the period of the delay.</p>
+                                    <!-- 4(a) -->
+
+                                    <div id="paddingExhibits4"></div>
+                                    <h5 class="text-center font-weight-bold"><u>EXHIBIT 4 </u></h5>
+
+
+                                    <p>Xsilica Software Solutions Pvt. Ltd,</p>
+                                    <p>H.No:8-2-120/112/B/5&6, 3rd Floor,</p>
+                                    <p>BBR Forum, Road No: 2, Banjara Hills, </p>
+                                    <p>Hyderabad- 500034, Telangana, </p>
+                                    <p>India</p>
+                                    <p>Dear Sirs,</p>
+                                    <p>We refer to the Payment and Collections Management Services Agreement dated <u>merchantCreateddate </u> executed between <u>businessName</u> and Xsilica Software Solutions Pvt. Ltd, </p>
+                                    <p>Pursuant thereto, we hereby confirm the Transaction Processing Fee structure as below</p>
+
+
+
+                                    <table class="table table-bordered" style="width:100%">
+                                        <tr><td class="text-center" colspan="3"><b>Transaction Processing Fees</b></td> </tr>
+                                        <tr>
+                                            <td class="text-center">1</td>
+                                            <td>Debit Card Gateway Facility Fee</td>
+                                            <td>
+                                                DcText
+
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center">2</td>
+                                            <td>Net Banking Facility Fee</td>
+                                            <td>
+                                                NbText
+
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center">3</td>
+                                            <td>Credit Card Gateway Facility Fee (Visa, MasterCard, Rupay)</td>
+                                            <td>
+                                                creditcardtext
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td class="text-center">4</td>
+                                            <td>Wallets and Pre-Paid Instruments (PPI’s)</td>
+                                            <td>
+                                                wallettext
+
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center">5</td>
+                                            <td>UPI Facility Fee</td>
+                                            <td>
+                                                Upitext
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td class="text-center">6</td>
+                                            <td>PrepaidCard</td>
+                                            <td>
+                                                PcText
+                                            </td>
+                                        </tr>
+
+                                    </table>
+
+
+                                    <p>Yours faithfully </p>
+                                    <p>For businessName </p> <br /><br />
+                                    <p>Name: BusinessPersonNameEdit            </p>
+                                    <p>Designation: <u>Merchant Representative</u></p>
+
+                                    <!-- 4(b) -->
+
+                                </div>
+
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

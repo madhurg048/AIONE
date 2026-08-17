@@ -1,20 +1,40 @@
 /* PayG Sales CRM — shared front-end helpers */
 const API = 'api/sales/';
-const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
+let CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
 async function apiGet(path, params = {}) {
   const q = new URLSearchParams(params).toString();
   const r = await fetch(API + path + (q ? '?' + q : ''), { credentials: 'same-origin' });
   return r.json();
 }
-async function apiSend(path, body, method = 'POST') {
+/* The CSRF token lives in the PHP session; a tab left open past the session's
+   lifetime (or alongside a re-login in another tab) holds a stale one. On a
+   CSRF failure we fetch the session's current token and retry ONCE — the user
+   never sees "CSRF validation failed" for a simply-idle tab. */
+async function refreshCsrf() {
+  try {
+    const j = await (await fetch(API + 'auth.php?action=csrf', { credentials: 'same-origin' })).json();
+    if (j.success && j.data && j.data.csrf) {
+      CSRF_TOKEN = j.data.csrf;
+      const m = document.querySelector('meta[name="csrf-token"]');
+      if (m) m.content = CSRF_TOKEN;
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+async function apiSend(path, body, method = 'POST', _retried = false) {
   const r = await fetch(API + path, {
     method,
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
     credentials: 'same-origin',
     body: JSON.stringify(body || {})
   });
-  return r.json();
+  const j = await r.json();
+  if (!_retried && j && j.error === 'CSRF validation failed' && await refreshCsrf()) {
+    return apiSend(path, body, method, true);
+  }
+  return j;
 }
 
 function toast(msg, ok = true) {

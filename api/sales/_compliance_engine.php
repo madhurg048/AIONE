@@ -74,14 +74,7 @@ function compliance_remind_item(PDO $db, array $item, bool $force = false): int
     return $n;
 }
 
-/**
- * Daily sweep: remind every active item in (or past) its reminder window, throttled to 1/day.
- *
- * The throttle window is deliberately 23h, not 24h: the cron fires at roughly the
- * same clock time each day, so a strict 24h test would lose the race to a few
- * seconds of drift and silently skip a day's nudge. 23h gives the sweep an hour
- * of slack while still keeping it to one reminder per item per day.
- */
+/** Daily sweep: remind every active item in (or past) its reminder window, throttled to 1/day. */
 function run_compliance_reminders(PDO $db): array
 {
     $stats = ['checked' => 0, 'reminded' => 0, 'notified' => 0, 'errors' => 0];
