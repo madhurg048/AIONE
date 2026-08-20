@@ -1,8 +1,8 @@
 <?php
 /**
- * Sales AI — agentic layer over the existing processing service (/chat_v3).
- * Reuses SERVICE_CHAT_ENDPOINT + serviceIsUp() so it shares the same brain as
- * the support side. Results are cached in ai_insights to avoid re-calling.
+ * Sales AI — agentic layer over the AI box (/chat_v3).
+ * Routes through crm_ai_call() in _ai.php, which talks to the box URL configured in
+ * Settings → AI Engine and nothing else. Results are cached in ai_insights to avoid re-calling.
  *
  * POST ai.php { action, ... }
  *   action=score_lead        { lead_id }        -> {score, band, reasons[], next_best_action}
@@ -26,7 +26,7 @@ $action = $b['action'] ?? '';
 require_once __DIR__ . '/_ai.php';
 function ai_call(string $prompt)
 {
-    // routes box -> cloud -> local (see _ai.php)
+    // routes to the configured AI box only (see _ai.php)
     $r = crm_ai_call($prompt, 'medium', 'chat_v3');
     if (!$r) return ['_down' => true];
     $clean = trim(preg_replace('/```(json)?/i', '', $r['response']));

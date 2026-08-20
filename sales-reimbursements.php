@@ -1,7 +1,8 @@
 <?php
 require_once __DIR__ . '/includes/sales-layout.php';
 $me = sales_guard();
-$canManage = in_array(sales_role(), ['admin','manager'], true);
+// Read-only extra visibility: admin, manager (own reports), sales_head, HR. Admin never acts.
+$canViewExtra = in_array(sales_role(), ['admin','manager','sales_head','hr_head','hr_manager'], true);
 sales_head('Reimbursements');
 sales_header($me, 'Sales · Reimbursements');
 sales_nav('reimbursements');
@@ -10,8 +11,8 @@ sales_nav('reimbursements');
 
   <div id="kpis" class="kstrip"></div>
 
-  <?php if ($canManage): ?>
-  <!-- who claimed how much (admin / manager analysis) -->
+  <?php if ($canViewExtra): ?>
+  <!-- who claimed how much (admin / manager / sales_head / HR analysis) -->
   <div class="card p-3">
     <div class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide mb-2">
       <i class="fa-solid fa-chart-simple text-indigo-500"></i> Who claimed how much
@@ -43,8 +44,8 @@ sales_nav('reimbursements');
   <div class="card">
     <div class="overflow-x-auto"><table class="dense">
       <thead><tr>
-        <th>Date</th><?php if($canManage):?><th>Rep</th><?php endif;?><th>Lead (in pursuit)</th>
-        <th>Category</th><th class="text-right">Amount</th><th>Status</th><th>Note</th><th></th>
+        <th>Date</th><?php if($canViewExtra):?><th>Rep</th><?php endif;?><th>Lead (in pursuit)</th>
+        <th>Category</th><th class="text-right">Amount</th><th>Sales approval</th><th>HR approval</th><th>Status</th><th>Note</th><th></th>
       </tr></thead>
       <tbody id="rows"></tbody>
     </table></div>
@@ -61,12 +62,13 @@ sales_nav('reimbursements');
 </div>
 
 <?php sales_scripts(); ?>
-<?php if ($canManage): ?><script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script><?php endif; ?>
+<?php if ($canViewExtra): ?><script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script><?php endif; ?>
 <script>
-const CAN_MANAGE = <?= $canManage ? 'true':'false' ?>;
+const CAN_VIEW_EXTRA = <?= $canViewExtra ? 'true':'false' ?>;
 let page = 1, perPage = 25, pages = 1;
 const CAT_LABEL = { travel:'Travel', stay:'Stay', food:'Food', fuel:'Fuel', other:'Other' };
 const ST_COLOR  = { submitted:'yellow', approved:'blue', paid:'green', rejected:'red' };
+const STAGE_COLOR = { pending:'yellow', approved:'green', rejected:'red' };
 
 function params(){ const p={page,per:perPage}; const g=id=>document.getElementById(id).value;
   if(g('fStatus'))p.status=g('fStatus'); if(g('fFrom'))p.from=g('fFrom'); if(g('fTo'))p.to=g('fTo'); return p; }
@@ -81,23 +83,30 @@ async function load(){
     ['Approved (to pay)', inr(s.approved||0)], ['Paid', inr(s.paid||0)],
   ].map(([l,v,warn])=>`<div><div class="kv ${warn?'text-amber-600':''}">${v}</div><div class="kl">${l}</div></div>`).join('');
   document.getElementById('rows').innerHTML = (res.data||[]).map(r=>{
-    const mgrAct = CAN_MANAGE ? `
-      ${r.status==='submitted'?`<button onclick="act(${r.id},'approve')" class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded">Approve</button>
-        <button onclick="act(${r.id},'reject')" class="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded ml-1">Reject</button>`:''}
-      ${r.status==='approved'?`<button onclick="act(${r.id},'pay')" class="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">Mark paid</button>`:''}` : '';
+    // Stage 1 (Sales Manager / Sales Head) and stage 2 (HR) are independent action slots —
+    // a row can show one, both, or neither depending on who's looking and where the claim is.
+    const mgrAct = r.can_mgr_act ? `
+      <button onclick="act(${r.id},'mgr_approve')" class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded">Accept</button>
+      <button onclick="act(${r.id},'mgr_reject')" class="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded ml-1">Deny</button>` : '';
+    const hrAct = r.can_hr_act ? `
+      <button onclick="act(${r.id},'hr_approve')" class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded">Accept</button>
+      <button onclick="act(${r.id},'hr_reject')" class="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded ml-1">Deny</button>` : '';
+    const payAct = r.can_pay ? `<button onclick="act(${r.id},'pay')" class="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">Mark paid</button>` : '';
     return `<tr>
       <td class="text-gray-500 whitespace-nowrap">${esc(r.expense_date||'')}</td>
-      ${CAN_MANAGE?`<td class="font-medium">${esc(r.employee_name||('#'+r.employee_id))}</td>`:''}
+      ${CAN_VIEW_EXTRA?`<td class="font-medium">${esc(r.employee_name||('#'+r.employee_id))}</td>`:''}
       <td>${esc(r.lead_company||r.lead_name||('lead #'+r.lead_id))}<div class="text-[10px] text-gray-400">${esc(r.lead_name||'')}</div></td>
       <td>${badge(CAT_LABEL[r.category]||r.category,'gray')}</td>
       <td class="text-right font-semibold">${inr(r.amount)}</td>
+      <td class="whitespace-nowrap">${badge(r.mgr_status, STAGE_COLOR[r.mgr_status]||'gray')}${(r.mgr_status==='approved'&&!r.mgr_by)?' <span class="text-[9px] text-gray-400">(self — skipped to HR)</span>':''}${mgrAct?' '+mgrAct:''}</td>
+      <td class="whitespace-nowrap">${badge(r.hr_status, STAGE_COLOR[r.hr_status]||'gray')}${hrAct?' '+hrAct:''}</td>
       <td>${badge(r.status, ST_COLOR[r.status]||'gray')}</td>
       <td class="text-gray-500 text-[11px] max-w-xs truncate" title="${esc(r.description||'')}">${esc(r.description||'')}${r.remarks?` · <span class="text-red-500">${esc(r.remarks)}</span>`:''}</td>
-      <td class="rowact whitespace-nowrap">${mgrAct}</td>
+      <td class="rowact whitespace-nowrap">${payAct}</td>
     </tr>`;
-  }).join('') || `<tr><td colspan="${CAN_MANAGE?8:7}" class="text-center text-gray-400 py-4">No claims yet — click “New claim”.</td></tr>`;
+  }).join('') || `<tr><td colspan="${CAN_VIEW_EXTRA?9:8}" class="text-center text-gray-400 py-4">No claims yet — click “New claim”.</td></tr>`;
   document.getElementById('pager').innerHTML = pagerHtml({ page: res.page, pages, total: res.total, per: perPage }, 'goPage');
-  if (CAN_MANAGE) loadAnalysis();
+  if (CAN_VIEW_EXTRA) loadAnalysis();
 }
 
 let _repChart;
@@ -158,9 +167,9 @@ async function saveClaim(e){
 }
 async function act(id, action){
   let extra = {};
-  if(action==='reject'){ const r = prompt('Reason for rejecting this claim:',''); if(r===null) return; extra.remarks = r; }
+  if(action.endsWith('reject')){ const r = prompt('Reason for denying this claim:',''); if(r===null) return; extra.remarks = r; }
   const res = await apiSend('reimbursements.php?'+action+'='+id, extra);
-  if(res.success){ toast('Claim '+res.data.status); load(); }
+  if(res.success){ toast('Claim ' + (res.data.status === 'submitted' ? 'updated — waiting on the next approver' : res.data.status)); load(); }
   else toast(res.error||'Failed', false);
 }
 load();

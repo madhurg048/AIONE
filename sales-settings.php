@@ -35,7 +35,7 @@ $__kpaMgrPlus = $__kpaRole === 'admin' || $__kpaRole === 'manager' || $__kpaRole
       <h3 class="text-[12px] font-semibold text-gray-700 uppercase tracking-wide"><i class="fa-solid fa-microchip text-indigo-500"></i> AI Engine <button type="button" onclick="showHelp('ai')" class="ml-2 text-[10px] normal-case font-normal text-indigo-500 hover:text-indigo-700" title="Setup help"><i class="fa-regular fa-circle-question"></i> Need keys?</button></h3>
       <span id="aiHealth" class="text-[11px]"></span>
     </div>
-    <p class="text-xs text-gray-500 mb-2">Route AI (lead scoring, insights, summaries, coaching) to your on-prem <b>AI box</b>. If the box is down it falls over to the cloud.</p>
+    <p class="text-xs text-gray-500 mb-2">Route AI (lead scoring, insights, summaries, coaching) to your on-prem <b>AI box</b>. If the box is down it falls over to the cloud endpoint set below. The CRM only ever calls the URLs entered on this screen.</p>
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
       <label class="flex items-center gap-1.5 mt-4"><input type="checkbox" id="aiBoxEnabled" class="chk"> Use AI box</label>
@@ -631,7 +631,8 @@ const HELP = {
     steps: [
       'Enter the <b>AI box URL/IP</b> your Superchat deployment runs on (e.g. <i>http://192.168.0.100:8000</i>).',
       'Get the <b>AI API key</b> and <b>Restart token</b> from Superchat and paste them here.',
-      '<b>Cloud fallback</b> (optional): an external chat endpoint used only when the box is down.'],
+      '<b>Cloud fallback</b> (optional): an external chat endpoint used only when the box is down.',
+      'The CRM calls <b>only</b> what is entered here — there is no hidden or built-in AI endpoint.'],
     link: { label: 'For keys, contact Superchat — superchat.in', url: 'https://www.superchat.in' },
     fields: 'Fill: AI box URL, AI key, Restart token, Cloud endpoint (optional).' }
 };

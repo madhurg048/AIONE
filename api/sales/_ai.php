@@ -1,16 +1,18 @@
 <?php
 /**
- * Central AI routing: local AI box (Superchat Chat API) → cloud fallback → local bridge.
- * When the box is enabled we health-check it first (/health); if it's down we say so and fall
- * over to the cloud. If the box answers, we use its value; if it returns nothing we fall over too.
+ * Central AI routing — every destination comes from Settings → AI Engine (the ai_settings row).
+ * When the box is enabled we health-check it first (/health); if it's down we say so. If the box
+ * answers, we use its value; if it returns nothing we fall over to the cloud endpoint that an
+ * admin has configured in the same screen.
+ *
+ * There is no hardcoded or environment-driven endpoint any more: the CRM will only ever contact
+ * a URL that is explicitly entered in Settings.
  *
  *   crm_ai_settings()                         -> config row (or null)
  *   crm_ai_box_health()                       -> ['up'=>bool,'degraded'=>bool,'metrics'=>[],'error'=>str]
- *   crm_ai_call($userInput,$len,$path)        -> ['response'=>str,'source'=>box|cloud|local] | null
+ *   crm_ai_call($userInput,$len,$path)        -> ['response'=>str,'source'=>box|cloud] | null
  */
 require_once __DIR__ . '/../../config/database.php';
-// ensure SERVICE_CHAT_ENDPOINT (local bridge, the final fallback) is available
-if (!defined('SERVICE_CHAT_ENDPOINT')) { $cfg = __DIR__ . '/../../config/config.php'; if (is_file($cfg)) @require_once $cfg; }
 
 function crm_ai_settings(): ?array
 {
@@ -45,10 +47,10 @@ function crm_ai_box_health(?string $url = null): array
 }
 
 /**
- * POST to an AI endpoint; return the reply string or null.
+ * POST to the AI box; return the reply string or null.
  * Speaks the Superchat chat_v3 contract by default, OR OpenAI-compatible format when the
- * URL is an OpenAI-style endpoint (…/chat/completions or …/v1/…) — so the cloud tier can
- * point straight at an OpenAI-compatible box (e.g. our Hetzner llama-server).
+ * configured box URL is an OpenAI-style endpoint (…/chat/completions or …/v1/…), so a box
+ * running an OpenAI-compatible server works without extra configuration.
  */
 function _ai_post(string $url, string $userInput, string $len, ?string $key, string $path): ?string
 {
@@ -97,28 +99,28 @@ function crm_ai_status(?string $set = null): string
 }
 
 /**
- * Routing rules:
- *   • Box CHECKED + online   → try the box, then fall over to cloud/local.
+ * Routing rules — Settings-configured endpoints ONLY:
+ *   • Box CHECKED + online   → try the box, then the cloud endpoint from Settings.
  *   • Box CHECKED + offline  → return null with status 'box_offline' (callers show "AI box offline";
  *                              we deliberately do NOT silently use the cloud).
- *   • Box UNCHECKED          → cloud → local bridge.
+ *   • Box UNCHECKED          → cloud endpoint from Settings.
+ *
+ * Both destinations come from the ai_settings row (Settings → AI Engine). The old
+ * env-driven last-resort fallback (SERVICE_CHAT_ENDPOINT / LLM_URL via ai-bridge.php)
+ * pointed at an unowned third-party host and has been removed, so nothing outside what
+ * an admin has explicitly entered in Settings is ever contacted.
  */
 function crm_ai_call(string $userInput, string $len = 'medium', string $path = 'chat_v3'): ?array
 {
     crm_ai_status('ok');
     $s = crm_ai_settings();
 
-    // cloud → local bridge fallback (used when box is unchecked, or box online but empty)
-    $cloudThenLocal = function () use ($s, $userInput, $len, $path) {
+    // Cloud endpoint as configured in Settings (used when box is unchecked, or box online but empty)
+    $cloud = function () use ($s, $userInput, $len, $path) {
         if ($s && $s['cloud_enabled'] && $s['cloud_url']) {
             $ckey = $s['cloud_api_key'] ?: null;
             $r = _ai_post($s['cloud_url'], $userInput, $len, $ckey, $path);
             if ($r !== null) return ['response' => $r, 'source' => 'cloud'];
-        }
-        if (defined('SERVICE_CHAT_ENDPOINT') && SERVICE_CHAT_ENDPOINT !== '') {
-            $lkey = defined('SERVICE_CHAT_KEY') ? SERVICE_CHAT_KEY : null;
-            $r = _ai_post(SERVICE_CHAT_ENDPOINT, $userInput, $len, $lkey, $path);
-            if ($r !== null) return ['response' => $r, 'source' => 'local'];
         }
         return null;
     };
@@ -126,10 +128,10 @@ function crm_ai_call(string $userInput, string $len = 'medium', string $path = '
     // Box CHECKED
     if ($s && $s['box_enabled'] && $s['box_url']) {
         if (crm_ai_box_health($s['box_url'])['up']) {
-            // online → box first, then cloud/local
+            // online → box first, then the configured cloud endpoint
             $r = _ai_post(rtrim($s['box_url'], '/') . '/' . $path, $userInput, $len, $s['ai_api_key'] ?: null, $path);
             if ($r !== null) return ['response' => $r, 'source' => 'box'];
-            $c = $cloudThenLocal();
+            $c = $cloud();
             if ($c) return $c;
             crm_ai_status('unavailable');
             return null;
@@ -139,8 +141,8 @@ function crm_ai_call(string $userInput, string $len = 'medium', string $path = '
         return null;
     }
 
-    // Box UNCHECKED → cloud → local bridge
-    $c = $cloudThenLocal();
+    // Box UNCHECKED → configured cloud endpoint
+    $c = $cloud();
     if ($c) return $c;
     crm_ai_status('unavailable');
     return null;

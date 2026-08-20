@@ -10,7 +10,7 @@
  *   executives               -> 403 (their own status lives on the My Timesheet day view)
  *
  * Returns:
- *   team_size, days[] {date, filled, missing, missing_names[]}   (Sundays excluded)
+ *   team_size, days[] {date, filled, missing, missing_names[]}   (weekends excluded)
  *   offenders[] {employee, days_expected, days_missed, miss_pct, last_filled}  worst first
  *   today_missing[]                                              (convenience for the header)
  */
@@ -46,7 +46,7 @@ $ids = array_column($team, 'id');
 $idIn = implode(',', array_map('intval', $ids));
 $nameOf = array_column($team, 'full_name', 'id');
 
-/* ---- date range (default today; capped at 92 days; Sundays excluded) ---- */
+/* ---- date range (default today; capped at 92 days; weekends excluded) ---- */
 $from = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($_GET['from'] ?? '')) ? $_GET['from'] : date('Y-m-d');
 $to   = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($_GET['to'] ?? ''))   ? $_GET['to']   : $from;
 if (strtotime($to) < strtotime($from)) { [$from, $to] = [$to, $from]; }
@@ -61,16 +61,32 @@ $rs = $db->query("SELECT DISTINCT entry_date, employee_id FROM timesheets
                    WHERE employee_id IN ($idIn) AND entry_date BETWEEN " . $db->quote($from) . " AND " . $db->quote($to));
 foreach ($rs->fetchAll() as $r) $filled[$r['entry_date']][(int)$r['employee_id']] = true;
 
+// Approved leave counts as "not missing" (not a fill, but not a default either).
+$onLeave = [];  // date => set of employee ids
+try {
+    $lv = $db->query("SELECT leave_date, employee_id FROM employee_leave_days
+                        WHERE employee_id IN ($idIn) AND leave_date BETWEEN " . $db->quote($from) . " AND " . $db->quote($to));
+    foreach ($lv->fetchAll() as $r) $onLeave[$r['leave_date']][(int)$r['employee_id']] = true;
+} catch (Throwable $e) { /* table may not exist on older DBs */ }
+$holidays = [];  // set of dates
+try {
+    $hd = $db->query("SELECT holiday_date FROM company_holidays WHERE holiday_date BETWEEN " . $db->quote($from) . " AND " . $db->quote($to));
+    $holidays = array_flip($hd->fetchAll(PDO::FETCH_COLUMN));
+} catch (Throwable $e) { }
+
 /* ---- walk the days ---- */
 $days = [];
 $missTally = array_fill_keys($ids, 0);
 $expected = 0;
 for ($t = strtotime($from); $t <= strtotime($to); $t += 86400) {
-    if ((int)date('w', $t) === 0) continue;            // Sunday
+    $dow = (int)date('w', $t);
+    if ($dow === 0 || $dow === 6) continue;            // weekend (Sat/Sun) — not an expected workday
     $d = date('Y-m-d', $t);
+    if (isset($holidays[$d])) continue;                 // company holiday — not expected of anyone
     $expected++;
     $missNames = [];
     foreach ($ids as $eid) {
+        if (!empty($onLeave[$d][$eid])) continue;       // on approved leave that day — not a default
         if (empty($filled[$d][$eid])) { $missTally[$eid]++; $missNames[] = $nameOf[$eid]; }
     }
     $days[] = ['date' => $d, 'dow' => date('D', $t),
@@ -94,11 +110,16 @@ usort($offenders, fn($a, $b) => [$b['days_missed'], $a['full_name']] <=> [$a['da
 
 /* ---- today's missing (independent of the selected range) ---- */
 $todayMissing = [];
-if ((int)date('w') !== 0) {
+$todayIsHoliday = false;
+try { $todayIsHoliday = (bool)$db->query("SELECT COUNT(*) FROM company_holidays WHERE holiday_date=" . $db->quote($today))->fetchColumn(); }
+catch (Throwable $e) { }
+$todayDow = (int)date('w');
+if ($todayDow !== 0 && $todayDow !== 6 && !$todayIsHoliday) {
     $tf = $db->query("SELECT DISTINCT employee_id FROM timesheets WHERE employee_id IN ($idIn) AND entry_date=" . $db->quote($today))
              ->fetchAll(PDO::FETCH_COLUMN);
     $tfSet = array_flip(array_map('intval', $tf));
-    foreach ($ids as $eid) if (!isset($tfSet[$eid])) $todayMissing[] = $nameOf[$eid];
+    $onLeaveToday = $onLeave[$today] ?? [];
+    foreach ($ids as $eid) if (!isset($tfSet[$eid]) && empty($onLeaveToday[$eid])) $todayMissing[] = $nameOf[$eid];
 }
 
 ok([

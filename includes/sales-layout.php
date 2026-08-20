@@ -118,6 +118,11 @@ function sales_head(string $title): void
         table.dense thead th{position:sticky;top:0;z-index:5;background:#f8fafc;font-size:10px;
             text-transform:uppercase;letter-spacing:.03em;color:#475569;text-align:left;
             padding:6px 8px;border-bottom:1px solid #e5e7eb;white-space:nowrap;cursor:default}
+        /* table.dense thead th's own text-align:left otherwise beats a plain .text-right utility
+           class (higher selector specificity) — this re-asserts it for headers marked right-aligned,
+           so a numeric column's header lines up with its (also right-aligned) cell values below it. */
+        table.dense thead th.text-right{text-align:right}
+        table.dense thead th.text-center{text-align:center}
         table.dense thead th.sortable{cursor:pointer;user-select:none}
         table.dense thead th.sortable:hover{color:#4f46e5}
         table.dense tbody td{padding:5px 8px;border-bottom:1px solid #f1f5f9;white-space:nowrap;vertical-align:middle}
@@ -728,7 +733,7 @@ function sales_products(): array
              'Governance' => ['cfo_reports', 'cfo_audit', 'compliance', 'cfo_settings']], null],
         'admin'         => ['Admin', 'fa-user-shield',
             ['' => ['dashboard'],
-             'Organization' => ['org', $deptsTab, $desigTab, 'users', $board, $advisory, $leadership, 'groups'],
+             'Organization' => ['org', 'users', $board, $advisory, $leadership, 'groups'],
              'KRA / KPI / SLA' => ['kra', 'kpi', 'kpa', 'scorecards', 'performance', $slaTab, $matrixTab, 'escalations'],
              'Workforce' => [$employees, $contract, $teamKpi],
              'Governance' => ['compliance', 'legal', 'govmap'],
@@ -976,6 +981,23 @@ function sales_nav(string $active): void
 function sales_scripts(): void
 { ?>
 <div id="toast" class="fixed top-4 right-4 hidden px-4 py-2 rounded-md shadow-lg text-sm z-50 text-white"></div>
+
+<!-- ===== "You haven't filled today's timesheet" reminder — one gentle toast per browser per day ===== -->
+<script>
+(function(){
+  var __k = 'payg_ts_reminder_' + new Date().toISOString().slice(0,10);
+  if (sessionStorage.getItem(__k)) return;
+  fetch((typeof API !== 'undefined' ? API : 'api/sales/') + 'timesheet.php?today_check=1', {credentials:'same-origin'})
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){
+      if (j && j.success && j.data && j.data.filled === false) {
+        sessionStorage.setItem(__k, '1');
+        setTimeout(function(){ if (typeof toast === 'function') toast("Reminder: you haven't filled today's timesheet yet.", false); }, 800);
+      }
+    })
+    .catch(function(){});
+})();
+</script>
 
 <!-- ===== Command palette (Ctrl/Cmd K) ===== -->
 <div id="palette" class="hidden fixed inset-0 z-[60] bg-black/40 flex items-start justify-center pt-24 px-4" onclick="if(event.target===this)closePalette()">

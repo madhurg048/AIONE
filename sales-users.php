@@ -49,7 +49,7 @@ sales_nav('users');
       </td></tr></tbody>
     </table></div>
   </div>
-  <div class="text-[10px] text-gray-400">Click any cell to edit it in place — Enter saves, Esc cancels. Governance <b>Board</b> = full access to everything; <b>Executive</b> joins the C-Suite group automatically.</div>
+  <div class="text-[10px] text-gray-400 mt-2.5 px-1">Click any cell to edit it in place — Enter saves, Esc cancels. Governance <b>Board</b> = full access to everything; <b>Executive</b> joins the C-Suite group automatically.</div>
 </main>
 
 <div id="modal" class="hidden fixed inset-0 bg-black/40 z-50 items-center justify-center p-4">
@@ -65,6 +65,14 @@ sales_nav('users');
   .kstat .kt { font-size:10px; color:#9ca3af; }
   .kstat .kn { font-size:18px; font-weight:700; color:#1f2937; line-height:1.15; }
   .kstat .ks { font-size:10px; color:#9ca3af; }
+
+  /* ---- People grid: row-height, vertical-centering and column-width polish ---- */
+  #grid tbody td { vertical-align:middle; padding-top:9px; padding-bottom:9px; }
+  #grid tbody tr#newRow td { vertical-align:middle; padding-top:6px; padding-bottom:6px; }
+  #grid td.rowact { text-align:center; vertical-align:middle; }
+  #grid td[data-f="email"], #grid td[data-f="phone"] { white-space:nowrap; }
+  #grid th:nth-child(11), #grid td:nth-child(11) { min-width:210px; }  /* Contact column: room for email + phone on one line each */
+  #grid td.is-active-cell { text-align:left; }
 </style>
 <?php sales_scripts(); ?>
 <script>
@@ -302,11 +310,14 @@ function startAdd(){
     <td><input id="n_dept" class="ctl w-full" placeholder="Dept"></td>
     <td><input id="n_sub" class="ctl w-full" placeholder="Sub dept"></td>
     <td><select id="n_mgr" class="ctl w-full"><option value="">— nobody —</option>${selHtml(MANAGERS.map(m=>[m.id,m.name]), '')}</select></td>
-    <td class="text-gray-300 text-[10px]">assign after save</td>
-    <td><input id="n_email" class="ctl w-full" placeholder="email"><input id="n_phone" class="ctl w-full mt-0.5" placeholder="mobile"></td>
-    <td class="whitespace-nowrap">
-      <button onclick="saveNew()" class="text-[10px] bg-indigo-600 text-white px-2 py-1 rounded">Save</button>
-      <button onclick="document.getElementById('newRow').remove()" class="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded">✕</button>
+    <td class="text-gray-300 text-[10px]" title="Group membership can be assigned after this person is saved">— after save</td>
+    <td colspan="3">
+      <div class="flex items-center gap-1.5">
+        <input id="n_email" class="ctl flex-1 min-w-0" placeholder="email">
+        <input id="n_phone" class="ctl w-24 shrink-0" placeholder="mobile">
+        <button onclick="saveNew()" class="text-[10px] font-semibold bg-indigo-600 text-white px-2.5 py-1 rounded hover:bg-indigo-700 shrink-0">Save</button>
+        <button onclick="document.getElementById('newRow').remove()" title="Cancel" class="text-[10px] bg-gray-100 text-gray-600 w-6 h-6 rounded hover:bg-gray-200 shrink-0">✕</button>
+      </div>
     </td>`;
   document.getElementById('addHint').before(tr);
   tr.addEventListener('keydown', ev => {

@@ -46,7 +46,7 @@ if (method() === 'POST' && isset($_GET['test'])) {
     $action = in_array($b['action'] ?? '', ['summarize','chat','translate'], true) ? $b['action'] : 'chat';
     $path = $action === 'chat' ? 'chat_v3' : $action;
     $r = crm_ai_call($text, $b['response_length'] ?? 'short', $path);
-    if (!$r) fail('No AI endpoint answered (box down and no fallback)', 502);
+    if (!$r) fail('No configured AI endpoint answered — check the box/cloud settings above', 502);
     ok(['response' => $r['response'], 'source' => $r['source']]);
 }
 
