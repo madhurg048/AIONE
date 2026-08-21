@@ -27,7 +27,31 @@ if (!(getDB() instanceof PDO)) {
     header('Location: sales-setup.php');
     exit;
 }
-// Guest (not logged in), DB ready -> fall through to the marketing homepage below.
+// Guest (not logged in), DB ready. From here this one file serves TWO views:
+//
+//   https://aione.payg.in/            -> the public landing page (below)
+//   https://aione.payg.in/index.php   -> the sign-in screen
+//
+// The switch is the URL the browser actually asked for. Hitting the domain root
+// sends "/" and the web server picks index.php internally WITHOUT touching
+// REQUEST_URI; a typed or linked "/index.php" arrives as exactly that. So the
+// login screen gets its own clean URL with no query string, and no rewrite rules
+// are needed in .htaccess / nginx-default.conf / web.config.
+//
+// basename() keeps this correct under a sub-folder too — /frontend/ is the
+// landing page, /frontend/index.php is the sign-in screen.
+// If REQUEST_URI is somehow unavailable, basename('') is '' and we fall through
+// to the landing page, i.e. the safe, pre-existing behaviour.
+$paygRequestPath = (string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+$paygWantsLogin  = basename($paygRequestPath) === 'index.php'
+    || isset($_GET['login']);   // ?login=1 kept as an alias for older links
+
+if ($paygWantsLogin) {
+    require __DIR__ . '/includes/login-page.php';
+    exit;
+}
+
+// Asked for the directory ("/") -> the marketing homepage below, exactly as before.
 ?>
 <!--
   =============================================
@@ -75,7 +99,7 @@ if (!(getDB() instanceof PDO)) {
                         <p class="text-sm text-gray-600">Multi-Channel Customer Support Platform</p>
                     </div>
                 </div>
-                <a href="sales-login.php"
+                <a href="index.php"
                     class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-2 rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition">
                     <i class="fas fa-sign-in-alt mr-2"></i>Login
                 </a>
@@ -89,7 +113,7 @@ if (!(getDB() instanceof PDO)) {
             <h2 class="text-5xl font-bold mb-6">Complete CRM Solution</h2>
             <p class="text-xl mb-8 opacity-90">AI-Powered Multi-Channel Customer Support System</p>
             <div class="flex justify-center space-x-4">
-                <a href="sales-login.php"
+                <a href="index.php"
                     class="bg-white text-purple-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition">
                     Get Started
                 </a>
@@ -225,7 +249,7 @@ if (!(getDB() instanceof PDO)) {
         <div class="max-w-7xl mx-auto px-4 text-center">
             <h3 class="text-3xl font-bold mb-4">Ready to Transform Your Customer Support?</h3>
             <p class="text-xl mb-8 opacity-90">Get started with PayG SuperChat CRM today</p>
-            <a href="sales-login.php"
+            <a href="index.php"
                 class="inline-block bg-white text-purple-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition">
                 <i class="fas fa-rocket mr-2"></i>Launch CRM
             </a>
@@ -262,7 +286,7 @@ if (!(getDB() instanceof PDO)) {
                 <div>
                     <h4 class="font-bold mb-4">Quick Links</h4>
                     <ul class="text-sm text-gray-400 space-y-2">
-                        <li><a href="sales-login.php" class="hover:text-white">Login</a></li>
+                        <li><a href="index.php" class="hover:text-white">Login</a></li>
                         <li><a href="#" class="hover:text-white">Privacy Policy</a></li>
                     </ul>
                 </div>
@@ -374,10 +398,6 @@ if (!(getDB() instanceof PDO)) {
         if (i > 0) w.remove();
     });
 
-    // Auto-open chat widget on page load
-    setTimeout(() => {
-        if (!widgetOpen) toggleChatWidget();
-    }, 500);
     </script>
 
     </div> <!-- End main-wrapper -->

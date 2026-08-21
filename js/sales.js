@@ -132,9 +132,48 @@ function evidenceHtml(ev) {
   return `<table class="w-full text-[11px]"><tbody>${rows.join('')}</tbody></table>`;
 }
 
+/* Last-loaded insight payload per strip, keyed by uid — feeds the Download button so it
+   doesn't need a round-trip; it just serialises whatever's already on screen. */
+const AI_INSIGHT_CACHE = {};
+
+function downloadInsightReport(uid, scope, label) {
+  const d = AI_INSIGHT_CACHE[uid];
+  if (!d) return;
+  const lines = [];
+  lines.push(`AI Insight — ${label}`);
+  lines.push(`Generated: ${d.cached ? 'cached, as of ' + (d.cached_at || '') : (d.generated_at || new Date().toISOString())}`);
+  lines.push('='.repeat(60), '');
+  lines.push('SUMMARY', d.summary || '(none)', '');
+  const section = (title, items) => {
+    if (!items || !items.length) return;
+    lines.push(title.toUpperCase());
+    items.forEach(i => lines.push('- ' + i));
+    lines.push('');
+  };
+  section('Key findings', d.key_findings);
+  section('Recommended decisions', d.decisions);
+  section('Watch', d.watch);
+  lines.push('EVIDENCE (raw figures the above is based on)');
+  const walk = (obj, prefix = '') => {
+    for (const [k, v] of Object.entries(obj || {})) {
+      if (Array.isArray(v)) lines.push(`${prefix}${k}: ${v.map(o => typeof o === 'object' ? Object.values(o).join(' | ') : o).join(', ')}`);
+      else if (v && typeof v === 'object') walk(v, prefix + k + '.');
+      else lines.push(`${prefix}${k}: ${v}`);
+    }
+  };
+  walk(d.evidence || {});
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `ai-insight-${scope}-${new Date().toISOString().slice(0, 10)}.txt`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
 async function renderInsightStrip(el, force = false) {
   const scope = el.getAttribute('data-ai-scope');
   const uid = 'ai_' + scope + '_' + Math.random().toString(36).slice(2, 7);
+  const label = el.getAttribute('data-ai-label') || scope;
   el.innerHTML = `
     <div class="card p-2">
       <div class="flex items-center justify-between mb-1">
@@ -142,6 +181,9 @@ async function renderInsightStrip(el, force = false) {
           <i class="fa-solid fa-wand-magic-sparkles text-purple-500"></i> AI Insight &amp; Recommended Decisions
           <span id="${uid}_stamp" class="ml-1 normal-case font-normal text-[10px] text-gray-400"></span></h3>
         <div class="flex items-center gap-3 text-xs">
+          <button id="${uid}_dl" onclick="downloadInsightReport('${uid}','${scope}','${label.replace(/'/g,"")}')" disabled
+            class="text-gray-300 cursor-not-allowed" title="Report not ready yet">
+            <i class="fa-solid fa-download"></i> Download</button>
           <button onclick="document.getElementById('${uid}_ev').classList.toggle('hidden')" class="text-gray-500 hover:text-indigo-600">
             <i class="fa-solid fa-table-list"></i> Evidence</button>
           <button onclick="renderInsightStrip(document.querySelector('[data-ai-scope=\\'${scope}\\']'), true)" class="text-indigo-600 hover:underline"><i class="fa-solid fa-rotate"></i> Refresh</button>
@@ -152,7 +194,10 @@ async function renderInsightStrip(el, force = false) {
     </div>`;
   const res = await apiSend('insight.php', { scope, force: force ? 1 : 0 });
   const d = res.data || {};
+  AI_INSIGHT_CACHE[uid] = d;
   const body = document.getElementById(uid + '_body');
+  const dlBtn = document.getElementById(uid + '_dl');
+  if (dlBtn && res.success) { dlBtn.disabled = false; dlBtn.title = 'Download this report as a text file'; dlBtn.className = 'text-gray-500 hover:text-indigo-600'; }
   document.getElementById(uid + '_ev').innerHTML =
     '<div class="text-[10px] text-gray-400 mb-1 uppercase">Computed from live data — the model only interprets these figures</div>' +
     evidenceHtml(d.evidence || {});
@@ -361,7 +406,7 @@ async function submitTask(e) {
 }
 document.addEventListener('DOMContentLoaded', () => { refreshTaskBadge(); setInterval(refreshTaskBadge, 60000); });
 
-/* Logout — destroy the session server-side, then show the single login page */
+/* Logout — destroy the session server-side, then back to the landing page with the sign-in form open */
 function salesLogout() {
   fetch('api/sales/auth.php?action=logout', {
     method: 'POST',
@@ -369,7 +414,7 @@ function salesLogout() {
     headers: { 'X-CSRF-Token': CSRF_TOKEN }
   })
     .catch(() => {})
-    .finally(() => { window.location.href = 'sales-login.php'; });
+    .finally(() => { window.location.href = 'index.php'; });
 }
 
 /* admin impersonation — return to the real admin session */

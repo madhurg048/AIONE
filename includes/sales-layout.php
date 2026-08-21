@@ -44,7 +44,10 @@ function sales_guard(?array $allow = null): array
         ? payg_role_exists(sales_role())                                   // any known role
         : in_array($_SESSION['user']['user_type'] ?? '', $allow, true));   // pinned user_types
     if (!$ok) {
-        header('Location: sales-login.php');
+        // The sign-in screen is served by index.php?login=1 now (includes/login-page.php).
+        // Relative URL on purpose: no hard-coded host, works at the site root and
+        // under a sub-folder alike.
+        header('Location: index.php');
         exit;
     }
     // Hard-enforce admin-configured module access (RBAC): derive the module from the
